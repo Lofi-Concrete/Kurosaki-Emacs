@@ -60,7 +60,12 @@
   (org-modern-cycle-stars nil)      ; 更深的层级一律用最小的方块
   (org-modern-timestamp t)
   (org-modern-table t)
-  (org-modern-table-vertical 2)     ; 表格竖线细一点（默认 3）
+  ;; 竖线宽度是「像素」而不是「字符」：org-modern 把每个 | 换成一个
+  ;; (space :width N) 的显示块。N 必须正好等于一个字符宽，否则每根竖线都比
+  ;; org-table-align 算的窄一截，表格越往右越错位（默认 3 像素 vs 一个字符
+  ;; 14 像素，所以默认值在等宽字体下必然错位）。写成浮点数 1.0 = 「一个规范
+  ;; 字符宽」，跟着字号走，GUI 和终端都对得上
+  (org-modern-table-vertical 1.0)
   (org-modern-priority t)
   (org-modern-todo t)
   ;; TODO 关键字方框的三态配色（跟着主题的语义 face 走）

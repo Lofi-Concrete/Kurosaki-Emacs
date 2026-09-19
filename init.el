@@ -8,9 +8,12 @@
 ;;   Emacs 原生功能 > 轻量成熟插件 > 自己写 glue code > 大型框架
 ;;
 ;; 视觉体系:
-;;   配色直接照抄 nano-emacs 的 nano-theme-dark (Nord): 雪白信息 +
-;;   琥珀色动作强调 (光标/选区/搜索/快捷键), 红色只留给错误与危险,
-;;   青蓝用于链接/关键字/类型全部常量见 unzeit-theme.el
+;;   配色照搬 Guix/dwm 桌面的构成主义规范 (见 unzeit-theme.el): 纯黑底
+;;   #101010 + 纯白正文 #FFFFFF (对比 19.6:1) + 唯一强调红 #C83B27;
+;;   次级信息靠 米白 #E4DED3 / 软白 #D8D1C6 / 灰 #8C887F 三档明度加
+;;   粗体·斜体·下划线分工, 红只占小面积 (光标方块 / 模式行状态块 /
+;;   当前匹配 / 错误 / 链接) —— 就是 dwm 状态栏左端那颗红方块的语言。
+;;   字体: 拉丁 Iosevka Term, 中文 Sarasa Term SC, 图标 Maple Mono NF CN
 ;;
 ;; 使用方式 (以 GUI 实例为主, 实例自带 server):
 ;;   emacs                         ; 启动 GUI 实例 (日常主力)
@@ -36,8 +39,9 @@
 ;;   early-init.el   启动优化 (GC / file handlers / 首帧)
 ;;   init.el         加载顺序编排 (本文件)
 ;;   lisp/core.el           基础: 常量/核心默认/界面/文件/剪贴板 (const+base+ui+files+vc+clipboard 合并)
+;;   lisp/unzeit-cursor.el  光标动画: 拖尾 + 跳跃脉冲 (由 core.el 加载, SPC c a 开关)
 ;;   lisp/init-package.el   包管理 (镜像测速 + 归档新鲜度 + use-package)
-;;   lisp/unzeit-theme.el   主题: nano-emacs 暗色 (Nord) 调色板
+;;   lisp/unzeit-theme.el   主题: Guix/dwm 构成主义高对比 (单色 + 唯一红)
 ;;   lisp/init-dashboard.el     dashboard 插件 (MELPA) 主屏 (nano 式布局)
 ;;   lisp/editor.el         meow 编辑 + SPC leader + mode line (meow+modeline 合并)
 ;;   lisp/completion.el     补全栈: corfu/cape + vertico/consult (corfu+completion 合并)

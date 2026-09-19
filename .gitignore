@@ -1,0 +1,12 @@
+# AI / 编码助手用的指示文件：不随仓库分发
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursorrules
+.cursor/
+
+# Emacs 生成的杂项
+*~
+\#*\#
+.\#*
+auto-save-list/

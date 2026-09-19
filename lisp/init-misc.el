@@ -332,11 +332,10 @@
                               help-mode))
   (popper-mode-line ""))
 
-;; 粘性函数头
-(use-package topsy
-  :ensure t
-  :defer t
-  :hook (prog-mode . topsy-mode))
+;; 这里曾经挂过 topsy（粘性函数头）：它把当前函数的首行顶在窗口最上方。
+;; 那一条正是 header-line，而 awesome-tab 的标签栏也画在 header-line 上
+;; （见 editor.el），于是 prog-mode 缓冲里标签栏被整个顶掉，.c/.cpp 上方
+;; 只剩一行函数头。标签栏是全局设施，函数头不是必需品，故移除。
 
 ;; 颜色预览
 (use-package rainbow-mode

@@ -78,9 +78,15 @@
   "返回一个 display 空格，把下一段文本固定在网格的第 COL 列
 COL 从网格左边缘向右数；HALF-GRID 是总网格宽度的一半使用实时 `center'
 符号，让网格随窗口尺寸变化保持居中与空格 padding 不同，它把列钉在
-同一水平位置（无论 CJK 字形如何渲染），因此两列在每一行都能对齐"
+同一水平位置（无论 CJK 字形如何渲染），因此两列在每一行都能对齐
+
+`:align-to' 里数字的单位是**帧默认字体（正文）的宽度**，而网格文字是界面
+字号（宽度约为它的一半），所以按字符格数算出的偏移必须乘 `unzeit/ui-font-ratio'
+换算过去，否则整条网格会向左侧偏掉半个宽度。"
   (propertize " " 'display
-              `(space . (:align-to (- center ,(- half-grid col))))))
+              `(space . (:align-to (- center
+                                      ,(* (- half-grid col)
+                                          unzeit/ui-font-ratio))))))
 
 (defun unzeit/dashboard-manual-hint ()
   "插入一个居中的、每行两个的两列对齐快捷键网格
@@ -156,6 +162,43 @@ COL 从网格左边缘向右数；HALF-GRID 是总网格宽度的一半使用实
     (insert "\n"))
 
   (dashboard-setup-startup-hook))
+
+;; 主屏整个缓冲统一走界面字号：dashboard 包自带的 face 只覆盖一部分文字，
+;; 列表项（Recent/Projects 的文件路径）、logo 字母之间的间隔空格、底部快捷键
+;; 网格里的中文标签都没有 face 属性，会落回 `default' 的 35.3pt，于是主屏
+;; 里大字小字混排。和 minibuffer 一样，用 buffer-local 的
+;; `face-remapping-alist' 把整个缓冲的 `default' 压到界面档
+;; （`unzeit/use-ui-font-buffer'，见 core.el）；dashboard-mode 在
+;; `dashboard-insert-startupify-lists' 末尾才开启，所以 buffer 一建好就生效
+(add-hook 'dashboard-mode-hook #'unzeit/use-ui-font-buffer)
+
+;; dashboard 自带的 `dashboard-center-text' 按「字符数 × 帧默认字体宽度」算居中
+;; 偏移，而主屏文字是界面字号（宽度约为默认字体的一半）—— 单位不符，缩进量
+;; 差一倍，于是 logo / init-info / Recent/Projects 这些整块文字都偏左半个宽度
+;; （2026-09-15 用户发现）。这里整段覆盖：宽度用 `string-width' 数（CJK 算两
+;; 格，与等宽字体一致），再乘界面字号比例换算成帧默认字体的单位，居中就正了
+(defun unzeit/dashboard--line-width (start end)
+  "START..END 内最长一行的显示宽度（字符格数，CJK 算两格）。"
+  (save-excursion
+    (goto-char start)
+    (let ((width 0))
+      (while (< (point) end)
+        (setq width (max width
+                         (string-width
+                          (buffer-substring-no-properties
+                           (line-beginning-position) (line-end-position)))))
+        (forward-line 1))
+      width)))
+
+(defun unzeit/dashboard-center-text (start end)
+  "把 START..END 里的文字按像素居中（覆盖 dashboard 自带实现）。"
+  (let* ((width (unzeit/dashboard--line-width start end))
+         (offset (* (/ (float width) 2) unzeit/ui-font-ratio))
+         (prefix (propertize " " 'display
+                             `(space . (:align-to (- center ,offset))))))
+    (add-text-properties start end `(line-prefix ,prefix indent-prefix ,prefix))))
+
+(advice-add 'dashboard-center-text :override #'unzeit/dashboard-center-text)
 
 ;; 按需显示主屏（SPC h），以及为空的 emacsclient 会话显示
 ;;（server-execute 会查询 `initial-buffer-choice'，它必须返回一个活的缓冲）
