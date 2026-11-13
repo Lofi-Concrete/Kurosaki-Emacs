@@ -93,7 +93,13 @@
 ;; 会对它 string-match，报 wrong-type-argument stringp nil；加个保护。
 (defun unzeit/eldoc-mouse-display-guard (orig docs &rest args)
   (when (and docs (stringp (car-safe (car-safe docs))))
-    (apply orig docs args)))
+    (apply orig
+           (mapcar (lambda (doc)
+                     (if (and (consp doc) (stringp (car doc)))
+                         (cons (unzeit/eldoc-decode-doc (car doc)) (cdr doc))
+                       doc))
+                   docs)
+           args)))
 
 ;; eldoc-mouse 弹窗左右各 8px fringe，默认用更暗的 fringe face，看着像两条空隙。
 ;; 保留 8px 内边距，但把 fringe 背景改成正文背景。
@@ -120,13 +126,29 @@
   "当前弹出的文档对应的符号范围。")
 
 (defun unzeit/eldoc-decode-doc (doc)
-  "把 UTF-8 原始字节（clangd 的 \342\206\222 这类）解回文字。"
+  "把 UTF-8 原始字节或 \342\200\242 这类八进制转义解回文字。"
+  (if (and (stringp doc)
+           (string-match-p "\\\\[0-7]\\{3\\}" doc))
+      (setq doc (replace-regexp-in-string
+                 "\\\\\\([0-7]\\{3\\}\\)"
+                 (lambda (m) (string (string-to-number (match-string 1 m) 8)))
+                 doc)))
   (if (and (stringp doc)
            (string-match-p "[\x80-\xff]" doc))
       (condition-case nil
           (decode-coding-string (string-to-unibyte doc) 'utf-8)
         (error doc))
     doc))
+
+(defun unzeit/eldoc-decode-doc-args (args)
+  "把 eldoc-mouse 文档参数里的 UTF-8 原始字节解回文字。"
+  (cons (unzeit/eldoc-decode-doc (car args)) (cdr args)))
+
+(with-eval-after-load 'eldoc-mouse
+  (unless (advice-member-p #'unzeit/eldoc-decode-doc-args
+                           #'eldoc-mouse--pop-doc)
+    (advice-add 'eldoc-mouse--pop-doc :filter-args
+                #'unzeit/eldoc-decode-doc-args)))
 
 (defun unzeit/eldoc-dwell-cancel ()
   "取消当前 buffer 的光标停留 timer。"
