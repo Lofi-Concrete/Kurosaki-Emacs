@@ -1,5 +1,7 @@
 # 🧙 Kurosaki-emacs
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 <div align="center">
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -33,6 +35,7 @@
   - [⌨️ Keybindings](#️-keybindings)
   - [📸 Screenshots](#-screenshots)
   - [❓ FAQ](#-faq)
+  - [🤖 AI Declaration](#-ai-declaration)
   - [💖 Acknowledgements](#-acknowledgements)
   - [📄 License](#-license)
 
@@ -249,6 +252,16 @@ enabled. Wayland only lets a focused client own the clipboard.
 **How do I try it without touching my Guix home?**
 Clone this repository to a temporary directory and start Emacs with
 `emacs --init-directory /path/to/Kurosaki-emacs`.
+
+## 🤖 AI Declaration
+
+This project is AI-assisted. Parts of the Emacs Lisp modules, language files,
+documentation and this README were generated or edited with the help of AI
+coding agents (DeepSeek Harness, powered by DeepSeek models). The human
+maintainer reviews, tests and remains responsible for the configuration.
+AI-generated content can be incomplete or wrong; use it at your own risk.
+
+See [AI-DECLARATION.md](AI-DECLARATION.md) for the full statement.
 
 ## 💖 Acknowledgements
 
