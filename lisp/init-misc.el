@@ -491,3 +491,29 @@
 
 ;;; init-misc.el ends here
 (provide 'init-misc)
+
+;;; ---- Git 增强（magit-todos / timemachine / browse-at-remote / messenger）----
+
+(use-package magit-todos
+  :ensure t
+  :after magit
+  :hook (magit-mode . magit-todos-mode))
+
+(use-package git-timemachine
+  :ensure t
+  :defer t)
+
+(use-package browse-at-remote
+  :ensure t
+  :defer t)
+
+(use-package git-messenger
+  :ensure t
+  :defer t)
+
+(use-package git-modes
+  :ensure t
+  :defer t)
+
+
+(provide 'init-misc)

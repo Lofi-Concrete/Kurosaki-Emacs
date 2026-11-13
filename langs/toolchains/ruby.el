@@ -1,1 +1,4 @@
-/gnu/store/0hzqbbg0kl40d15gn5jyz44ikwnz1yii-ruby.el
+;;; ruby.el --- Unzeit 工具链: Ruby（Guix） -*- lexical-binding: t; -*-
+
+(provide 'unzeit-toolchain-ruby)
+;;; ruby.el ends here

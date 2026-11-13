@@ -144,7 +144,11 @@
   (cond ((derived-mode-p 'jsp-mode) (eglot-ensure))
         ((derived-mode-p 'web-mode) nil)
         ((derived-mode-p 'emacs-lisp-mode 'lisp-mode 'makefile-mode
-                         'snippet-mode 'ron-mode)
+                         'snippet-mode 'ron-mode
+                         'dart-mode 'julia-ts-mode 'julia-mode
+                         'php-mode 'scala-ts-mode 'swift-ts-mode
+                         'powershell 'cmake-mode 'csv-mode 'fish-mode
+                         'protobuf-mode)
          nil)
         (t (eglot-ensure))))
 

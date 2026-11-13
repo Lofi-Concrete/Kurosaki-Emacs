@@ -557,3 +557,45 @@
 (kill-emacs (if (> unzeit/smoke-failures 0) 1 0))
 
 ;;; smoke.el ends here
+
+;;; ---- 4e. 2026-11 新增：语言/补全/文件树/Git/笔记 -------------------
+(princ "\n[新增功能]\n")
+(unzeit/smoke-check "新增语言模式的包已装"
+                    '(seq-every-p #'package-installed-p
+                                  '(dart-mode julia-mode julia-ts-mode php-mode
+                                    scala-ts-mode swift-ts-mode powershell
+                                    cmake-mode csv-mode fish-mode protobuf-mode
+                                    scss-mode ron-mode markdown-mode
+                                    markdown-mermaid mermaid-ts-mode
+                                    inf-ruby rspec-mode ruby-refactor)))
+(unzeit/smoke-check "补全增强包已装"
+                    '(seq-every-p #'package-installed-p
+                                  '(consult-dir consult-yasnippet consult-todo
+                                    consult-flyspell wgrep link-hint
+                                    browse-kill-ring easy-kill smart-region
+                                    drag-stuff avy-zap rg
+                                    region-occurrences-highlighter hl-todo)))
+(unzeit/smoke-check "treemacs 已装且 SPC f t/v 已对调"
+                    '(and (package-installed-p 'treemacs)
+                          (eq (lookup-key unzeit/leader-map (kbd "f t"))
+                              'unzeit/treemacs-toggle)
+                          (eq (lookup-key unzeit/leader-map (kbd "f v"))
+                              'unzeit/file-tree-toggle)))
+(unzeit/smoke-check "Git 增强与按键"
+                    '(and (package-installed-p 'magit-todos)
+                          (package-installed-p 'git-timemachine)
+                          (package-installed-p 'browse-at-remote)
+                          (package-installed-p 'git-messenger)
+                          (eq (lookup-key unzeit/leader-map (kbd "g T"))
+                              'magit-todos-list)
+                          (eq (lookup-key unzeit/leader-map (kbd "g t"))
+                              'git-timemachine)))
+(unzeit/smoke-check "org-roam 已装并用内置 SQLite"
+                    '(and (package-installed-p 'org-roam)
+                          (package-installed-p 'org-roam-ui)
+                          (require 'org-roam nil t)
+                          (eq org-roam-database-connector 'sqlite-builtin)
+                          (eq (lookup-key unzeit/leader-map (kbd "o r"))
+                              'org-roam-node-find)))
+
+(provide 'smoke)

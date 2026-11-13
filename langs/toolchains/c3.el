@@ -1,1 +1,7 @@
-/gnu/store/674ahdirxajvgd9zfa47g2hq8j60r8si-c3.el
+;;; c3.el --- Unzeit 工具链: C3 / c3c -*- lexical-binding: t; -*-
+
+(unzeit/toolchain-register
+ '(:front ("tools/c3c")))
+
+(provide 'unzeit-toolchain-c3)
+;;; c3.el ends here

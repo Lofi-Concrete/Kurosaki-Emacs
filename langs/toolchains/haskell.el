@@ -1,1 +1,7 @@
-/gnu/store/zrpifslda568lxcrnacizddrnrb9vplz-haskell.el
+;;; haskell.el --- Unzeit 工具链: Haskell / ghcup -*- lexical-binding: t; -*-
+
+(unzeit/toolchain-register
+ '(:front (".ghcup/bin")))
+
+(provide 'unzeit-toolchain-haskell)
+;;; haskell.el ends here

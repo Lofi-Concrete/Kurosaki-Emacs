@@ -1,1 +1,10 @@
-/gnu/store/v0k2fs1idqwl8d4yiwk7r1if5091ivjg-haskell.el
+;;; haskell.el --- Unzeit: Haskell -*- lexical-binding: t; -*-
+
+(unzeit/treesit-source 'haskell "https://github.com/tree-sitter/tree-sitter-haskell")
+
+(unzeit/define-on-demand-mode haskell-mode haskell-mode "\\.hs\\'")
+
+(unzeit/eglot-server '(haskell-mode . ("haskell-language-server" "--lsp")))
+
+(provide 'unzeit-lang-haskell)
+;;; haskell.el ends here

@@ -1,1 +1,7 @@
-/gnu/store/40nkgph219a7dqra71ga31pf1hpl1fxl-rust.el
+;;; rust.el --- Unzeit 工具链: Rust / rustup -*- lexical-binding: t; -*-
+
+(unzeit/toolchain-register
+ '(:front (".cargo/bin")))
+
+(provide 'unzeit-toolchain-rust)
+;;; rust.el ends here

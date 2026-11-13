@@ -116,4 +116,27 @@
 ;;; ---- Org agenda / capture 快捷键（C-c a / C-c c）在 editor.el 中 --------
 
 ;;; init-org.el ends here
+
+;;; ---- org-roam（笔记）-----------------------------------------------
+
+(use-package org-roam
+  :ensure t
+  :after org
+  :custom
+  (org-roam-directory (expand-file-name "roam" org-directory))
+  (org-roam-database-connector 'sqlite-builtin)
+  (org-roam-completion-everywhere t)
+  :config
+  (make-directory org-roam-directory t)
+  (org-roam-db-autosync-mode 1))
+
+(use-package org-roam-ui
+  :ensure t
+  :after org-roam
+  :custom
+  (org-roam-ui-sync-theme t)
+  (org-roam-ui-follow t)
+  (org-roam-ui-update-on-save t))
+
+
 (provide 'init-org)

@@ -1,1 +1,7 @@
-/gnu/store/083w3n9cc0riaf8aq05zxv5x202fqkwv-tools-dir.el
+;;; tools-dir.el --- Unzeit 工具链: ~/tools（共享目录） -*- lexical-binding: t; -*-
+
+(unzeit/toolchain-register
+ '(:front ("tools/bin") :ld-library-path ("tools/lib")))
+
+(provide 'unzeit-toolchain-tools-dir)
+;;; tools-dir.el ends here

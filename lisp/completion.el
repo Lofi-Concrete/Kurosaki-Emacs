@@ -324,5 +324,71 @@
 (with-eval-after-load 'avy
   (setf (alist-get ?. avy-dispatch-alist) #'unzeit/avy-action-embark))
 
+
+;;; ---- consult 扩展与编辑增强 ---------------------------------------
+
+(use-package consult-dir
+  :ensure t
+  :after consult
+  :bind (("C-x C-d" . consult-dir)
+         :map minibuffer-local-completion-map
+         ("C-x C-d" . consult-dir)
+         ("C-x C-j" . consult-dir-jump-file)))
+
+(use-package consult-yasnippet
+  :ensure t
+  :after (consult yasnippet))
+
+(use-package hl-todo
+  :ensure t
+  :config
+  (global-hl-todo-mode 1))
+
+(use-package consult-todo
+  :ensure t
+  :after (consult hl-todo))
+
+(use-package consult-flyspell
+  :ensure t
+  :after consult)
+
+(use-package wgrep
+  :ensure t
+  :defer t)
+
+(use-package link-hint
+  :ensure t
+  :defer t)
+
+(use-package browse-kill-ring
+  :ensure t
+  :defer t)
+
+(use-package easy-kill
+  :ensure t
+  :defer t)
+
+(use-package smart-region
+  :ensure t
+  :config
+  (smart-region-on))
+
+(use-package drag-stuff
+  :ensure t
+  :defer t)
+
+(use-package avy-zap
+  :ensure t
+  :defer t)
+
+(use-package rg
+  :ensure t
+  :defer t)
+
+(use-package region-occurrences-highlighter
+  :ensure t
+  :defer t)
+
+
 ;;; completion.el ends here
 (provide 'completion)

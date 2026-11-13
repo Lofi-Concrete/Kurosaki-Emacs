@@ -12,8 +12,11 @@
   "R" #'consult-ripgrep
   "d" #'dirvish-dwim
   "b" #'consult-buffer
-  "t" #'unzeit/file-tree-toggle
-  "T" #'unzeit/file-tree-focus
+  "t" #'unzeit/treemacs-toggle
+  "T" #'unzeit/treemacs-focus
+  "v" #'unzeit/file-tree-toggle
+  "V" #'unzeit/file-tree-focus
+  "e" #'consult-dir
   "D" #'unzeit/dirvish-toggle
   "F" #'dirvish-fd
   "a" #'dirvish-quick-access)
@@ -64,7 +67,10 @@
   "s" #'consult-line
   "g" #'consult-ripgrep
   "f" #'consult-find
-  "b" #'consult-buffer)
+  "b" #'consult-buffer
+  "y" #'consult-yasnippet
+  "T" #'consult-todo
+  "F" #'consult-flyspell)
 
 ;;; ---- 窗口 / 缓冲切换的辅助命令 ----------------------------------
 
@@ -198,7 +204,11 @@
   "c" #'magit-commit-create
   "p" #'magit-push
   "f" #'magit-fetch
-  "b" #'magit-blame)
+  "b" #'magit-blame
+  "t" #'git-timemachine
+  "T" #'magit-todos-list
+  "o" #'browse-at-remote
+  "m" #'git-messenger:popup-message)
 
 (defvar-keymap unzeit/lsp-map
   :doc "SPC l：LSP（eglot）与 xref"
@@ -273,7 +283,12 @@
   "l" #'org-store-link
   "m" #'unzeit/org-manual
   "q" #'unzeit/quickstart-manual
-  "w" #'unzeit/writer-toggle)
+  "w" #'unzeit/writer-toggle
+  "r" #'org-roam-node-find
+  "i" #'org-roam-node-insert
+  "b" #'org-roam-buffer-toggle
+  "d" #'org-roam-dailies-today
+  "u" #'org-roam-ui-mode)
 
 (defun unzeit/org-manual ()
   "打开 Unzeit 操作手册"
@@ -357,7 +372,8 @@
   "," #'unzeit/switch-to-last-buffer
   "`" #'other-window
   "W" #'unzeit/window-prev
-  "q" #'save-buffers-kill-terminal)
+  "q" #'save-buffers-kill-terminal
+  "y" #'browse-kill-ring)
 
 ;;; ---- C-c：原生 Emacs 的自定义命令前缀 ------------------------------
 
@@ -386,8 +402,10 @@
 (defvar-keymap unzeit/custom-map
   :doc "C-c：Unzeit 自定义命令（与 meow 的 SPC leader 并存）"
   ;; 文件 / 目录
-  "t" #'unzeit/file-tree-toggle
-  "T" #'unzeit/file-tree-focus
+  "t" #'unzeit/treemacs-toggle
+  "T" #'unzeit/treemacs-focus
+  "v" #'unzeit/file-tree-toggle
+  "V" #'unzeit/file-tree-focus
   "d" #'unzeit/dirvish-toggle
   ;; 主屏 / 体检 / 写作
   "h" #'unzeit/dashboard-toggle
