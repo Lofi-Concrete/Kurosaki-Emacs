@@ -1,44 +1,264 @@
-# Kurosaki-emacs（独立 Emacs 配置）
+# 🧙 Kurosaki-emacs
 
-这是 Kurosaki-emacs 的独立 Emacs 配置仓库，**不依赖 `~/guix`**。clone 到 `~/.emacs.d` 即可使用。
+<div align="center">
 
-## 2026-11 新增
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![GNU Emacs](https://img.shields.io/badge/Emacs-31.1-7F5AB6?logo=gnu&logoColor=white)](https://www.gnu.org/software/emacs/)
+[![Platform](https://img.shields.io/badge/Platform-Guix%20System%20%7C%20Wayland-informational)](#-prerequisites)
+[![Editing](https://img.shields.io/badge/Editing-Meow-7aa2f7)](#-features)
 
-- 文件树：`SPC f t/T` = treemacs，`SPC f v/V` = dirvish-side。
-- 补全：`SPC f e` consult-dir、`SPC s y/T/F`、`SPC y` browse-kill-ring、`SPC l o` link-hint。
-- Git：`SPC g T/t/o/m` = magit-todos / git-timemachine / browse-at-remote / git-messenger。
-- 笔记：`SPC o r/i/b/d/u` = org-roam，目录 `~/org/roam`，内置 SQLite。
-- 语言：Dart/Julia/PHP/Scala/Swift/PowerShell/CMake/CSV/Fish/Protobuf/SCSS/RON/Markdown。
+</div>
 
-## 快速开始
+<div align="center">
+
+![Kurosaki-emacs](images/emacs-logo.png)
+
+</div>
+
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
+
+## Table of Contents
+
+  - [✨ Features](#-features)
+  - [🧰 Prerequisites](#-prerequisites)
+    - [Operating System](#operating-system)
+    - [GNU Emacs](#gnu-emacs)
+    - [Fonts](#fonts)
+  - [🚀 Quick Start](#-quick-start)
+    - [Guix Home](#guix-home)
+    - [Standalone](#standalone)
+    - [First Startup](#first-startup)
+  - [⬆️ Updating](#️-updating)
+  - [⚙️ Customization](#️-customization)
+  - [⌨️ Keybindings](#️-keybindings)
+  - [📸 Screenshots](#-screenshots)
+  - [❓ FAQ](#-faq)
+  - [💖 Acknowledgements](#-acknowledgements)
+  - [📄 License](#-license)
+
+<!-- markdown-toc end -->
+
+Kurosaki-emacs is a personal Emacs distribution for **Guix System + Wayland**,
+built around **meow**, **vertico + corfu + consult + embark**, **eglot +
+tree-sitter**, **org-roam**, **magit** and a calm **Tokyo Night** interface.
+
+It is not a generic starter kit. It is the exact configuration I use every day,
+kept in one repository so it can be cloned on any machine without pulling the
+whole Guix home-manager setup.
+
+The internal namespace is still `unzeit/` for historical reasons; the project
+name is **Kurosaki-emacs**.
+
+## ✨ Features
+
+- **Modal editing with meow**: `SPC` is the leader in normal/motion state;
+  `C-c` remains a stateless prefix for the same commands.
+- **Modern completion**: vertico + orderless + marginalia + consult + embark,
+  corfu + cape + yasnippet, centered child-frame popups, consult extensions and
+  wgrep/link-hint/browse-kill-ring helpers.
+- **LSP and tree-sitter**: eglot + tree-sitter + apheleia for completion,
+  diagnostics and formatting; graceful fallback when a server is missing.
+- **Multi-language support**: C/C++, Go, Python, Rust, Java, JavaScript/TypeScript,
+  Web/JSP, Zig, Haskell, C3, Odin, Ruby, Lua, Dart, Julia, PHP, Scala, Swift,
+  PowerShell, CMake, CSV, Fish, Protobuf, SCSS, RON, Markdown.
+- **File management**: treemacs on `SPC f t/T`; the existing dirvish-side on
+  `SPC f v/V`; dired and dirvish helpers.
+- **Git**: magit + magit-todos + git-timemachine + browse-at-remote +
+  git-messenger + git-modes; `SPC g` is the git prefix.
+- **Notes**: org + org-roam + org-roam-ui; roam database uses Emacs 31's built-in
+  SQLite (no external `sqlite3` required).
+- **Polished UI**: Tokyo Night theme, Maple Mono NF CN, dashboard, centered
+  which-key/transient/vertico child frames, ultra-scroll, solaire-mode,
+  eol diagnostic chips and an eldoc-mouse point-dwell popup.
+- **Emacs as a Guix tool**: emacs-guix, `guix-devel-mode`, build-log highlighting
+  and store-path prettifying.
+- **Chinese-first**: Chinese font sets, pinyin-aware search and CJK spacing.
+
+## 🧰 Prerequisites
+
+### Operating System
+
+- **Guix System** is the primary target (the home module is in this repository's
+  `home/editor/editor.scm` and `home/lang/lang.scm`).
+- **Linux + Wayland** is the tested display setup (niri + Noctalia).
+- Any Emacs 31.1 build with pgtk should work for the standalone setup; pgtk is
+  required for native Wayland clipboard and child-frame behaviour.
+
+### GNU Emacs
+
+**GNU Emacs 31.1 or newer** is required. The configuration relies on:
+
+- native tree-sitter (`treesit`)
+- native JSON and SQLite
+- pgtk (Wayland)
+- `libgccjit` for native compilation (optional but recommended)
+
+### Fonts
+
+- **Maple Mono NF CN** — body, CJK and Nerd icons
+- **LXGW WenKai Mono** — org writing
+- **Noto Color Emoji** — emoji
+
+### External tools
+
+The configuration degrades gracefully when these are absent, but the full
+experience needs:
+
+- language servers: `clangd`, `gopls`, `rust-analyzer`, `zls`, `hls`,
+  `solargraph`, `lua-language-server`, `typescript-language-server`,
+  `vscode-html-language-server`, `vscode-css-language-server`
+- formatters: `clang-format`, `gofmt`/`gofumpt`, `rustfmt`, `zig fmt`, `prettier`
+- tree-sitter grammars from the Guix profile
+
+## 🚀 Quick Start
+
+### Guix Home
+
+The configuration is consumed as a **git submodule** by the Guix home repo:
 
 ```sh
-git clone <this-repo> ~/.emacs.d
+git clone ssh://git@codeberg.org/Lofi_Concrete/lc-guix-home-manager.git ~/guix
+git -C ~/guix submodule update --init --recursive
+guix home reconfigure ~/guix/home/home.scm \
+  --load-path="$HOME/Projects/lc-guix-channels/guix" --fallback
 ```
 
-- 字体：正文/中文 `Maple Mono NF CN`，org 写作 `LXGW WenKai Mono`，emoji `Noto Color Emoji`。
-- 首次启动会测速 ELPA 镜像；也可以先跑 `tests/preinstall-modern.sh`。
-- 机器本地配置：`cp lisp/init-local.example.el lisp/init-local.el`。
-- 健康检查：`M-x unzeit/doctor`。
-- 外部工具（clangd/gopls/rust-analyzer/zls、tree-sitter 语法等）见 `docs/操作手册.org`。
+The `--load-path` is required because the home config imports packages from the
+`lc-guix` channel. The submodule live at `home/editor/.emacs.d`.
 
-# Kurosaki-emacs
+### Standalone
 
-我的 Emacs 配置：meow 模态编辑（`SPC` 是 leader，normal/motion 态），
-同时保留 `C-c` 这套不依赖状态的自定义命令；eglot + tree-sitter 给补全与诊断，
-主题固定 Tokyo Night（doom 自带 `doom-tokyo-night`，不跟桌面壁纸取色）。
-正文字体 Maple Mono NF CN 13pt（与 Ghostty 的 `font-size = 13` 对齐），
-中文也用 Maple Mono NF CN，org 用 LXGW WenKai Mono，Nerd 图标同 Maple。
-窗口不透明（不做 `alpha-background`）；行号只在代码/配置缓冲开启，绝对号、宽度自适应
-（Centaur 方案；原因见 core.el 的「行号」一节），全局当前行高亮用 `C-c H` 开关。
-除少量轻量插件外都用 Emacs 自带能力搭。
+To use the Emacs configuration without the Guix home layer:
 
-- meow：`ESC` 回 normal，`i`/`a` 进 insert，`SPC` 是 leader；`SPC m ?` 是速查表。
-- 原生键：`C-x C-f` 开文件、`C-x C-s` 保存、`C-x b` 切缓冲、`C-x p` 项目、`C-x g` Git。
-- 自定义键：`C-c` 前缀（文件树、体检、eshell、AI、Java、Guix 等），全表见 `docs/操作手册.org`。
-- 标签栏图标保留 nerd-icons 的彩色 face；dirvish 侧栏按文件名自适应 20–32 列。
-- 现代化层（Centaur 风格）：`ultra-scroll` 像素滚动、which-key/transient 的 childframe、
-  minibuffer 候选在屏幕中央的 `vertico-posframe` childframe 里、
-  `solaire-mode` 变暗非文件缓冲、corfu 2 字符/0.15 秒、flymake 0.15 秒 + flyover 内联诊断、
-  Emacs 31 的 `treesit-enabled-modes`（语法仍由 Guix profile 预装）；开关都在
-  `lisp/unzeit-modern.el`，`init-local.el` 可逐项回退。
+```sh
+mv ~/.emacs.d ~/.emacs.d.bak
+git clone <Kurosaki-emacs-url> ~/.emacs.d
+~/.emacs.d/tests/preinstall-modern.sh
+~/.emacs.d/tests/preinstall-features.sh
+cp ~/.emacs.d/lisp/init-local.example.el ~/.emacs.d/lisp/init-local.el
+```
+
+Then install the fonts and the external tools listed above. Start Emacs; the
+first startup probes the ELPA mirrors and installs anything still missing.
+
+### First Startup
+
+- The package mirror is probed in the background; no network request is made on
+  the critical startup path.
+- `M-x unzeit/doctor` prints a health report: fonts, language servers, tree-sitter
+  grammars, package state and the active configuration.
+- If something looks stale, remember: `~/.emacs.d` is deployed from the store in
+  the Guix setup; edit the repository, `guix home reconfigure`, then restart Emacs.
+
+## ⬆️ Updating
+
+Standalone:
+
+```sh
+git -C ~/.emacs.d pull --ff-only
+emacs --batch -Q --eval '(progn (package-initialize) (package-quickstart-refresh))'
+```
+
+Guix home:
+
+```sh
+git -C ~/guix submodule update --remote --merge
+guix home reconfigure ~/guix/home/home.scm \
+  --load-path="$HOME/Projects/lc-guix-channels/guix" --fallback
+```
+
+Restart Emacs after the reconfigure; the running instance keeps its old store.
+
+## ⚙️ Customization
+
+- **`unzeit/modern-*`**: toggles for the modern layer (scroll, GC, posframe,
+  vertico-posframe, solaire, diagnostics). `M-x customize-group unzeit/modern`.
+- **`init-local.el`**: machine-local overrides, never deployed by Guix; copy
+  `lisp/init-local.example.el` and edit it.
+- **Fonts**: `unzeit/body-font-height` and `unzeit/ui-font-height` in
+  `lisp/core.el`; the frame font string in `early-init.el`.
+- **Languages**: every language lives in its own file under `langs/`; add a new
+  `.el` file and it is loaded automatically.
+- **Theme**: a single fixed Tokyo Night palette in `lisp/unzeit-theme.el`.
+
+## ⌨️ Keybindings
+
+`SPC` is the leader in meow normal/motion state; `C-c` exposes the same custom
+commands without a state prefix.
+
+| Key | Action |
+|-----|--------|
+| `SPC f t` / `SPC f T` | treemacs toggle / focus |
+| `SPC f v` / `SPC f V` | dirvish-side toggle / focus |
+| `SPC f f` / `SPC f s` / `SPC f o` | find file / save / other window |
+| `SPC f e` | consult-dir |
+| `SPC s s` / `SPC s g` | consult-line / consult-ripgrep |
+| `SPC s y` / `SPC s T` / `SPC s F` | consult-yasnippet / todo / flyspell |
+| `SPC g s` / `SPC g l` / `SPC g d` | magit status / log / diff |
+| `SPC g T` / `SPC g t` / `SPC g o` / `SPC g m` | magit-todos / timemachine / browse-at-remote / git-messenger |
+| `SPC o r` / `SPC o i` / `SPC o b` | org-roam node-find / insert / buffer-toggle |
+| `SPC o d` / `SPC o u` | org-roam dailies / org-roam-ui |
+| `SPC o a` / `SPC o c` | org-agenda / org-capture |
+| `SPC l d` / `SPC l r` / `SPC l o` | xref definition / references / link-hint |
+| `SPC y` | browse-kill-ring |
+| `SPC c g` | Guix packages / generations / services |
+| `SPC ?` | help commands |
+| `C-c t` / `C-c v` | treemacs / dirvish-side |
+| `C-c a` / `C-c c` | org-agenda / org-capture |
+| `C-c g` | Guix popup |
+
+## 📸 Screenshots
+
+<div align="center">
+
+![Kurosaki-emacs logo](images/emacs-logo.png)
+
+</div>
+
+The dashboard, the centered vertico popup, the eldoc-mouse point-dwell popup and
+the treemacs side window are the main visual pieces. A screenshot set will be
+added as the configuration settles.
+
+## ❓ FAQ
+
+**Is `~/.emacs.d` a git repository?**
+In the Guix setup, no: it is a deployed store symlink. The source of truth is
+`~/guix/home/editor/.emacs.d` (a git submodule pointing at this repository).
+In the standalone setup, `~/.emacs.d` *is* this repository.
+
+**Why is the configuration still using `unzeit/`?**
+The project was previously called Unzeit. The prefix is kept to avoid breaking
+years of muscle memory and every language file; the display name is
+Kurosaki-emacs.
+
+**A language has no completion.**
+Check the language server and the tree-sitter grammar. Missing servers are not
+registered, so eglot will not error; install the server, or add it to
+`langs/<language>.el`. Missing grammars can be installed with
+`M-x treesit-install-language-grammar` or `guix home reconfigure`.
+
+**org-roam fails to open its database.**
+The config uses Emacs 31's built-in SQLite (`sqlite-builtin`); no external
+`sqlite3` is needed. If your Emacs was built without SQLite, switch
+`org-roam-database-connector` to `sqlite` and install the `sqlite` package.
+
+**The clipboard does not work.**
+Use a pgtk build; `select-enable-clipboard` is on and `meow-use-clipboard` is
+enabled. Wayland only lets a focused client own the clipboard.
+
+**How do I try it without touching my Guix home?**
+Clone this repository to a temporary directory and start Emacs with
+`emacs --init-directory /path/to/Kurosaki-emacs`.
+
+## 💖 Acknowledgements
+
+- [Centaur Emacs](https://github.com/seagle0128/.emacs.d) — the README layout and
+  several UI ideas are inspired by it.
+- The Emacs, Guix, meow, vertico, corfu, consult, embark, eglot, magit and
+  org-roam communities.
+- Maple Mono, LXGW WenKai and the Tokyo Night theme.
+
+## 📄 License
+
+GPL-3.0. See [LICENSE](LICENSE) or
+<https://www.gnu.org/licenses/gpl-3.0>.
