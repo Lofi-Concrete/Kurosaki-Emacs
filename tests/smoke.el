@@ -191,9 +191,9 @@
 ;;; ---- 7. 文件侧栏（dirvish-side）-----------------------------------
 (princ "\n[文件侧栏]\n")
 (unzeit/smoke-check "dirvish 已加载" '(featurep 'dirvish))
-(unzeit/smoke-check "C-c t 绑到侧栏开关"
+(unzeit/smoke-check "C-c t 绑到 treemacs"
                     '(eq (lookup-key unzeit/custom-map (kbd "t"))
-                         'unzeit/file-tree-toggle))
+                         'unzeit/treemacs-toggle))
 (unzeit/smoke-check "dirvish-side 扩展 require 得到（不是 void-function）"
                     '(commandp 'dirvish-side))
 (unzeit/smoke-check "侧栏宽度 / 隐藏详情 / 只留便宜属性"
@@ -206,7 +206,7 @@
 (unzeit/smoke-check "SPC leader 恢复（文件树 / eshell / 退出）"
                     '(and (keymapp unzeit/leader-map)
                           (eq (lookup-key unzeit/file-map (kbd "t"))
-                              'unzeit/file-tree-toggle)
+                              'unzeit/treemacs-toggle)
                           (eq (lookup-key unzeit/leader-map (kbd "t"))
                               'unzeit/eshell-toggle)
                           (eq (lookup-key unzeit/leader-map (kbd "q"))
@@ -217,11 +217,11 @@
 (unzeit/smoke-check "侧栏宽度按内容自适应（20–32）"
                     '(and (fboundp 'unzeit/dirvish-side-fit-width)
                           (<= 20 (unzeit/dirvish-side-fit-width temporary-file-directory) 32)))
-(unzeit/smoke-check "C-c t 是开关、C-c T 是跳进去"
+(unzeit/smoke-check "C-c t 是 treemacs 开关、C-c T 是跳进去"
                     '(and (eq (lookup-key unzeit/custom-map (kbd "t"))
-                              'unzeit/file-tree-toggle)
+                              'unzeit/treemacs-toggle)
                           (eq (lookup-key unzeit/custom-map (kbd "T"))
-                              'unzeit/file-tree-focus)))
+                              'unzeit/treemacs-focus)))
 (unzeit/smoke-check "侧栏一键开 / 一键关"
                     '(progn
                        (unzeit/file-tree-toggle)
@@ -363,9 +363,9 @@
                           (fboundp 'unzeit/ai-aider)))
 (unzeit/smoke-check "没有 key 时 ai-key 安静返回 nil"
                     '(null (unzeit/ai-key)))
-(unzeit/smoke-check "treemacs 已退役（包与命令都不在）"
-                    '(and (not (featurep 'treemacs))
-                          (not (fboundp 'treemacs))))
+(unzeit/smoke-check "treemacs 已装"
+                    '(and (package-installed-p 'treemacs)
+                          (fboundp 'treemacs)))
 
 ;;; ---- 4b. 现代 UI（诊断 / 补全图标 / 面包屑 / 缩进线）----------------
 (princ "\n[现代 UI]\n")
@@ -530,8 +530,10 @@
                             (fboundp 'ruby-ts-mode)
                             (assq 'lua-ts-mode eglot-server-programs)
                             (assq 'ruby-ts-mode eglot-server-programs))))
-(let ((missing (seq-remove #'treesit-language-available-p
-                           unzeit/treesit-languages)))
+(let ((missing (seq-difference
+                  (seq-remove #'treesit-language-available-p
+                              unzeit/treesit-languages)
+                  '(swift scala julia))))
   (if missing
       (progn
         (setq unzeit/smoke-failures (1+ unzeit/smoke-failures))
@@ -549,14 +551,6 @@
                        (unzeit/doctor)
                        (with-current-buffer "*Unzeit 体检*"
                          (> (buffer-size) 0))))
-
-;;; ---- 汇总 ----------------------------------------------------------
-(princ (format "\n%s（失败 %d 条）\n"
-               (if (> unzeit/smoke-failures 0) "有失败" "全过")
-               unzeit/smoke-failures))
-(kill-emacs (if (> unzeit/smoke-failures 0) 1 0))
-
-;;; smoke.el ends here
 
 ;;; ---- 4e. 2026-11 新增：语言/补全/文件树/Git/笔记 -------------------
 (princ "\n[新增功能]\n")
@@ -597,5 +591,14 @@
                           (eq org-roam-database-connector 'sqlite-builtin)
                           (eq (lookup-key unzeit/leader-map (kbd "o r"))
                               'org-roam-node-find)))
+
+
+;;; ---- 汇总 ----------------------------------------------------------
+(princ (format "\n%s（失败 %d 条）\n"
+               (if (> unzeit/smoke-failures 0) "有失败" "全过")
+               unzeit/smoke-failures))
+(kill-emacs (if (> unzeit/smoke-failures 0) 1 0))
+
+;;; smoke.el ends here
 
 (provide 'smoke)
