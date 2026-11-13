@@ -1,6 +1,14 @@
-# Unzeit Emacs（独立仓库）
+# Kurosaki-emacs（独立 Emacs 配置）
 
-这是 Unzeit 的独立 Emacs 配置仓库，**不依赖 `~/guix`**。clone 到 `~/.emacs.d` 即可使用。
+这是 Kurosaki-emacs 的独立 Emacs 配置仓库，**不依赖 `~/guix`**。clone 到 `~/.emacs.d` 即可使用。
+
+## 2026-11 新增
+
+- 文件树：`SPC f t/T` = treemacs，`SPC f v/V` = dirvish-side。
+- 补全：`SPC f e` consult-dir、`SPC s y/T/F`、`SPC y` browse-kill-ring、`SPC l o` link-hint。
+- Git：`SPC g T/t/o/m` = magit-todos / git-timemachine / browse-at-remote / git-messenger。
+- 笔记：`SPC o r/i/b/d/u` = org-roam，目录 `~/org/roam`，内置 SQLite。
+- 语言：Dart/Julia/PHP/Scala/Swift/PowerShell/CMake/CSV/Fish/Protobuf/SCSS/RON/Markdown。
 
 ## 快速开始
 
@@ -14,7 +22,7 @@ git clone <this-repo> ~/.emacs.d
 - 健康检查：`M-x unzeit/doctor`。
 - 外部工具（clangd/gopls/rust-analyzer/zls、tree-sitter 语法等）见 `docs/操作手册.org`。
 
-# Unzeit
+# Kurosaki-emacs
 
 我的 Emacs 配置：meow 模态编辑（`SPC` 是 leader，normal/motion 态），
 同时保留 `C-c` 这套不依赖状态的自定义命令；eglot + tree-sitter 给补全与诊断，

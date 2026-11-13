@@ -1,9 +1,9 @@
-#+TITLE: Unzeit 操作手册（完整版）
+#+TITLE: Kurosaki-emacs 操作手册（完整版）
 #+STARTUP: showall
 #+OPTIONS: toc:3 num:nil
 #+FILETAGS: :emacs:manual:
 
-# 源文件：~/guix/home/editor/docs/操作手册.org
+# 源文件：~/Projects/Kurosaki-emacs/docs/操作手册.org
 # 使用副本：~/org/操作手册.org（=SPC o m= 打开这一个）
 # 简明版：~/org/快速上手.org
 # 同步：cp ~/guix/home/editor/docs/*.org ~/org/
@@ -511,6 +511,50 @@ magit 缓冲里的键见[[*Git]]。
   =C-c= 键排在后面，键多时 =C-h= 翻页。
 - 旧 leader 的 =SPC= 树没有删：=SPC b b= 仍是 consult-buffer，=SPC p p= 仍是项目，
   =SPC w= 仍是窗口；=C-c= 只是多出来的一套无状态入口。
+
+* 2026-11 新增功能
+
+** 文件树
+| 键 | 作用 |
+|----+------|
+| =SPC f t= | treemacs 开关 |
+| =SPC f T= | 聚焦 treemacs |
+| =SPC f v= | dirvish-side 开关 |
+| =SPC f V= | 聚焦 dirvish-side |
+| =C-c t= / =C-c v= | 同上（C-c 前缀） |
+
+** 补全
+| 键 | 作用 |
+|----+------|
+| =SPC f e= | consult-dir |
+| =SPC s y= | consult-yasnippet |
+| =SPC s T= | consult-todo |
+| =SPC s F= | consult-flyspell |
+| =SPC y= | browse-kill-ring |
+| =SPC l o= | link-hint |
+
+** Git
+| 键 | 作用 |
+|----+------|
+| =SPC g T= | magit-todos |
+| =SPC g t= | git-timemachine |
+| =SPC g o= | browse-at-remote |
+| =SPC g m= | git-messenger |
+
+** 笔记（org-roam）
+目录 =~/org/roam=；数据库用 Emacs 31 内置 SQLite（=sqlite-builtin=）。
+| 键 | 作用 |
+|----+------|
+| =SPC o r= | node-find |
+| =SPC o i= | node-insert |
+| =SPC o b= | buffer-toggle |
+| =SPC o d= | dailies-today |
+| =SPC o u= | org-roam-ui |
+
+** 语言模式
+Dart、Julia、PHP、Scala、Swift、PowerShell、CMake、CSV、Fish、Protobuf、SCSS、RON、Markdown/Mermaid；
+Ruby 追加 inf-ruby / rspec-mode / ruby-refactor。
+缺 LSP 的模式只给语法；swift/scala/julia 的 tree-sitter 语法在 =lang.scm= 里，需 reconfigure 部署。
 
 * Minibuffer：vertico + orderless + marginalia + consult + embark
 
