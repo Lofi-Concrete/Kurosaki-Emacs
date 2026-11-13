@@ -127,19 +127,21 @@
 
 (defun unzeit/eldoc-decode-doc (doc)
   "把 UTF-8 原始字节或 \342\200\242 这类八进制转义解回文字。"
-  (if (and (stringp doc)
-           (string-match-p "\\\\[0-7]\\{3\\}" doc))
-      (setq doc (replace-regexp-in-string
-                 "\\\\\\([0-7]\\{3\\}\\)"
-                 (lambda (m) (string (string-to-number (match-string 1 m) 8)))
-                 doc)))
-  (if (and (stringp doc)
-           (string-match-p "[\x80-\xff]" doc))
-      (condition-case nil
-          (decode-coding-string (string-to-unibyte doc) 'utf-8)
-        (error doc))
-    doc))
-
+  (when (stringp doc)
+    (setq doc (replace-regexp-in-string
+               "\\\\\\([0-7]\\{3\\}\\)\\\\\\([0-7]\\{3\\}\\)\\\\\\([0-7]\\{3\\}\\)"
+               (lambda (m)
+                 (decode-coding-string
+                  (unibyte-string (string-to-number (match-string 1 m) 8)
+                                  (string-to-number (match-string 2 m) 8)
+                                  (string-to-number (match-string 3 m) 8))
+                  'utf-8))
+               doc))
+    (if (not (multibyte-string-p doc))
+        (condition-case nil
+            (decode-coding-string doc 'utf-8)
+          (error doc))
+      doc)))
 (defun unzeit/eldoc-decode-doc-args (args)
   "把 eldoc-mouse 文档参数里的 UTF-8 原始字节解回文字。"
   (cons (unzeit/eldoc-decode-doc (car args)) (cdr args)))
