@@ -130,6 +130,8 @@
   (make-directory org-roam-directory t)
   (org-roam-db-autosync-mode 1))
 
+(setq org-roam-database-connector 'sqlite-builtin)
+
 (use-package org-roam-ui
   :ensure t
   :after org-roam
