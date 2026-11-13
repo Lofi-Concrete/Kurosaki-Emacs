@@ -1,123 +1,110 @@
-# 🧙 Kurosaki-emacs
+# Kurosaki-emacs
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-<div align="center">
-
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![GNU Emacs](https://img.shields.io/badge/Emacs-31.1-7F5AB6?logo=gnu&logoColor=white)](https://www.gnu.org/software/emacs/)
-[![Platform](https://img.shields.io/badge/Platform-Guix%20System%20%7C%20Wayland-informational)](#-prerequisites)
-[![Editing](https://img.shields.io/badge/Editing-Meow-7aa2f7)](#-features)
-
-</div>
-
-<div align="center">
-
 ![Kurosaki-emacs](images/emacs-logo.png)
-
-</div>
-
-<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 
 ## Table of Contents
 
-  - [✨ Features](#-features)
-  - [🧰 Prerequisites](#-prerequisites)
-    - [Operating System](#operating-system)
-    - [GNU Emacs](#gnu-emacs)
-    - [Fonts](#fonts)
-  - [🚀 Quick Start](#-quick-start)
-    - [Guix Home](#guix-home)
-    - [Standalone](#standalone)
-    - [First Startup](#first-startup)
-  - [⬆️ Updating](#️-updating)
-  - [⚙️ Customization](#️-customization)
-  - [⌨️ Keybindings](#️-keybindings)
-  - [📸 Screenshots](#-screenshots)
-  - [❓ FAQ](#-faq)
-  - [🤖 AI Declaration](#-ai-declaration)
-  - [💖 Acknowledgements](#-acknowledgements)
-  - [📄 License](#-license)
+- [Introduction](#introduction)
+- [Dashboard](#dashboard)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Updating](#updating)
+- [Customization](#customization)
+- [Keybindings](#keybindings)
+- [Screenshots](#screenshots)
+- [AI Declaration](#ai-declaration)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
 
-<!-- markdown-toc end -->
+## Introduction
 
-Kurosaki-emacs is a personal Emacs distribution for **Guix System + Wayland**,
-built around **meow**, **vertico + corfu + consult + embark**, **eglot +
-tree-sitter**, **org-roam**, **magit** and a calm **Tokyo Night** interface.
+Kurosaki-emacs is a personal Emacs distribution for Guix System and Wayland. It
+is built around meow, vertico with corfu and consult, eglot with tree-sitter,
+org-roam, magit, and a calm Tokyo Night interface.
 
 It is not a generic starter kit. It is the exact configuration I use every day,
 kept in one repository so it can be cloned on any machine without pulling the
 whole Guix home-manager setup.
 
 The internal namespace is still `unzeit/` for historical reasons; the project
-name is **Kurosaki-emacs**.
+name is Kurosaki-emacs.
 
-## ✨ Features
+## Dashboard
 
-- **Modal editing with meow**: `SPC` is the leader in normal/motion state;
-  `C-c` remains a stateless prefix for the same commands.
-- **Modern completion**: vertico + orderless + marginalia + consult + embark,
-  corfu + cape + yasnippet, centered child-frame popups, consult extensions and
-  wgrep/link-hint/browse-kill-ring helpers.
-- **LSP and tree-sitter**: eglot + tree-sitter + apheleia for completion,
-  diagnostics and formatting; graceful fallback when a server is missing.
-- **Multi-language support**: C/C++, Go, Python, Rust, Java, JavaScript/TypeScript,
-  Web/JSP, Zig, Haskell, C3, Odin, Ruby, Lua, Dart, Julia, PHP, Scala, Swift,
-  PowerShell, CMake, CSV, Fish, Protobuf, SCSS, RON, Markdown.
-- **File management**: treemacs on `SPC f t/T`; the existing dirvish-side on
+![Dashboard](images/dashboard.png)
+
+The dashboard shows the recent files, projects, a random quote and the leader
+key hints. Which-key, vertico and transient popups use centered child frames.
+
+## Features
+
+- Modal editing with meow: `SPC` is the leader in normal and motion state; `C-c`
+  remains a stateless prefix for the same commands.
+- Modern completion: vertico, orderless, marginalia, consult and embark, plus
+  corfu, cape and yasnippet, centered child-frame popups, consult extensions and
+  wgrep, link-hint and browse-kill-ring helpers.
+- LSP and tree-sitter: eglot, tree-sitter and apheleia for completion, diagnostics
+  and formatting; a missing server only degrades, it does not error.
+- Multi-language support: C/C++, Go, Python, Rust, Java, JavaScript and
+  TypeScript, Web and JSP, Zig, Haskell, C3, Odin, Ruby, Lua, Dart, Julia, PHP,
+  Scala, Swift, PowerShell, CMake, CSV, Fish, Protobuf, SCSS, RON and Markdown.
+- File management: treemacs on `SPC f t/T`; the existing dirvish-side on
   `SPC f v/V`; dired and dirvish helpers.
-- **Git**: magit + magit-todos + git-timemachine + browse-at-remote +
-  git-messenger + git-modes; `SPC g` is the git prefix.
-- **Notes**: org + org-roam + org-roam-ui; roam database uses Emacs 31's built-in
-  SQLite (no external `sqlite3` required).
-- **Polished UI**: Tokyo Night theme, Maple Mono NF CN, dashboard, centered
-  which-key/transient/vertico child frames, ultra-scroll, solaire-mode,
+- Git: magit, magit-todos, git-timemachine, browse-at-remote, git-messenger and
+  git-modes; `SPC g` is the git prefix.
+- Notes: org, org-roam and org-roam-ui; the roam database uses the SQLite built
+  into Emacs 31, so no external sqlite3 is required.
+- Polished UI: Tokyo Night theme, Maple Mono NF CN, dashboard, centered
+  which-key, transient and vertico child frames, ultra-scroll, solaire-mode,
   eol diagnostic chips and an eldoc-mouse point-dwell popup.
-- **Emacs as a Guix tool**: emacs-guix, `guix-devel-mode`, build-log highlighting
-  and store-path prettifying.
-- **Chinese-first**: Chinese font sets, pinyin-aware search and CJK spacing.
+- Guix integration: emacs-guix, guix-devel-mode, build-log highlighting and
+  store-path prettifying.
+- Chinese-first: Chinese font sets, pinyin-aware search and CJK spacing.
 
-## 🧰 Prerequisites
+## Prerequisites
 
-### Operating System
+### Operating system
 
-- **Guix System** is the primary target (the home module is in this repository's
-  `home/editor/editor.scm` and `home/lang/lang.scm`).
-- **Linux + Wayland** is the tested display setup (niri + Noctalia).
-- Any Emacs 31.1 build with pgtk should work for the standalone setup; pgtk is
+- Guix System is the primary target. The home module lives in
+  `home/editor/editor.scm` and `home/lang/lang.scm`.
+- Linux and Wayland is the tested display setup (niri and Noctalia).
+- For the standalone setup, any Emacs 31.1 build with pgtk works. pgtk is
   required for native Wayland clipboard and child-frame behaviour.
 
 ### GNU Emacs
 
-**GNU Emacs 31.1 or newer** is required. The configuration relies on:
+GNU Emacs 31.1 or newer is required. The configuration relies on:
 
-- native tree-sitter (`treesit`)
+- native tree-sitter (treesit)
 - native JSON and SQLite
-- pgtk (Wayland)
-- `libgccjit` for native compilation (optional but recommended)
+- pgtk for Wayland
+- libgccjit for native compilation, optional but recommended
 
 ### Fonts
 
-- **Maple Mono NF CN** — body, CJK and Nerd icons
-- **LXGW WenKai Mono** — org writing
-- **Noto Color Emoji** — emoji
+- Maple Mono NF CN for the body, CJK and Nerd icons
+- LXGW WenKai Mono for org writing
+- Noto Color Emoji for emoji
 
 ### External tools
 
 The configuration degrades gracefully when these are absent, but the full
 experience needs:
 
-- language servers: `clangd`, `gopls`, `rust-analyzer`, `zls`, `hls`,
-  `solargraph`, `lua-language-server`, `typescript-language-server`,
-  `vscode-html-language-server`, `vscode-css-language-server`
-- formatters: `clang-format`, `gofmt`/`gofumpt`, `rustfmt`, `zig fmt`, `prettier`
+- language servers: clangd, gopls, rust-analyzer, zls, hls, solargraph,
+  lua-language-server, typescript-language-server, vscode-html-language-server
+  and vscode-css-language-server
+- formatters: clang-format, gofmt or gofumpt, rustfmt, zig fmt and prettier
 - tree-sitter grammars from the Guix profile
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Guix Home
 
-The configuration is consumed as a **git submodule** by the Guix home repo:
+The configuration is consumed as a git submodule by the Guix home repository:
 
 ```sh
 git clone ssh://git@codeberg.org/Lofi_Concrete/lc-guix-home-manager.git ~/guix
@@ -127,7 +114,7 @@ guix home reconfigure ~/guix/home/home.scm \
 ```
 
 The `--load-path` is required because the home config imports packages from the
-`lc-guix` channel. The submodule live at `home/editor/.emacs.d`.
+lc-guix channel. The submodule lives at `home/editor/.emacs.d`.
 
 ### Standalone
 
@@ -144,16 +131,17 @@ cp ~/.emacs.d/lisp/init-local.example.el ~/.emacs.d/lisp/init-local.el
 Then install the fonts and the external tools listed above. Start Emacs; the
 first startup probes the ELPA mirrors and installs anything still missing.
 
-### First Startup
+### First startup
 
 - The package mirror is probed in the background; no network request is made on
   the critical startup path.
-- `M-x unzeit/doctor` prints a health report: fonts, language servers, tree-sitter
-  grammars, package state and the active configuration.
-- If something looks stale, remember: `~/.emacs.d` is deployed from the store in
-  the Guix setup; edit the repository, `guix home reconfigure`, then restart Emacs.
+- `M-x unzeit/doctor` prints a health report: fonts, language servers,
+  tree-sitter grammars, package state and the active configuration.
+- If the configuration looks stale, remember that `~/.emacs.d` is deployed from
+  the store in the Guix setup. Edit the repository, run
+  `guix home reconfigure`, then restart Emacs.
 
-## ⬆️ Updating
+## Updating
 
 Standalone:
 
@@ -172,22 +160,23 @@ guix home reconfigure ~/guix/home/home.scm \
 
 Restart Emacs after the reconfigure; the running instance keeps its old store.
 
-## ⚙️ Customization
+## Customization
 
-- **`unzeit/modern-*`**: toggles for the modern layer (scroll, GC, posframe,
-  vertico-posframe, solaire, diagnostics). `M-x customize-group unzeit/modern`.
-- **`init-local.el`**: machine-local overrides, never deployed by Guix; copy
+- `unzeit/modern-*`: toggles for the modern layer (scroll, GC, posframe,
+  vertico-posframe, solaire and diagnostics). Run
+  `M-x customize-group unzeit/modern`.
+- `init-local.el`: machine-local overrides that Guix never deploys. Copy
   `lisp/init-local.example.el` and edit it.
-- **Fonts**: `unzeit/body-font-height` and `unzeit/ui-font-height` in
-  `lisp/core.el`; the frame font string in `early-init.el`.
-- **Languages**: every language lives in its own file under `langs/`; add a new
-  `.el` file and it is loaded automatically.
-- **Theme**: a single fixed Tokyo Night palette in `lisp/unzeit-theme.el`.
+- Fonts: `unzeit/body-font-height` and `unzeit/ui-font-height` in `lisp/core.el`;
+  the frame font string in `early-init.el`.
+- Languages: every language lives in its own file under `langs/`; a new `.el`
+  file is loaded automatically.
+- Theme: a single fixed Tokyo Night palette in `lisp/unzeit-theme.el`.
 
-## ⌨️ Keybindings
+## Keybindings
 
-`SPC` is the leader in meow normal/motion state; `C-c` exposes the same custom
-commands without a state prefix.
+`SPC` is the leader in meow normal and motion state; `C-c` exposes the same
+custom commands without a state prefix.
 
 | Key | Action |
 |-----|--------|
@@ -210,50 +199,19 @@ commands without a state prefix.
 | `C-c a` / `C-c c` | org-agenda / org-capture |
 | `C-c g` | Guix popup |
 
-## 📸 Screenshots
+## Screenshots
 
-<div align="center">
+Which-key popup:
 
-![Kurosaki-emacs logo](images/emacs-logo.png)
+![Which-key](images/which-key.png)
 
-</div>
+Vertico completion:
 
-The dashboard, the centered vertico popup, the eldoc-mouse point-dwell popup and
-the treemacs side window are the main visual pieces. A screenshot set will be
-added as the configuration settles.
+![Vertico](images/vertico.png)
 
-## ❓ FAQ
+The dashboard screenshot at the top of this README shows the same setup.
 
-**Is `~/.emacs.d` a git repository?**
-In the Guix setup, no: it is a deployed store symlink. The source of truth is
-`~/guix/home/editor/.emacs.d` (a git submodule pointing at this repository).
-In the standalone setup, `~/.emacs.d` *is* this repository.
-
-**Why is the configuration still using `unzeit/`?**
-The project was previously called Unzeit. The prefix is kept to avoid breaking
-years of muscle memory and every language file; the display name is
-Kurosaki-emacs.
-
-**A language has no completion.**
-Check the language server and the tree-sitter grammar. Missing servers are not
-registered, so eglot will not error; install the server, or add it to
-`langs/<language>.el`. Missing grammars can be installed with
-`M-x treesit-install-language-grammar` or `guix home reconfigure`.
-
-**org-roam fails to open its database.**
-The config uses Emacs 31's built-in SQLite (`sqlite-builtin`); no external
-`sqlite3` is needed. If your Emacs was built without SQLite, switch
-`org-roam-database-connector` to `sqlite` and install the `sqlite` package.
-
-**The clipboard does not work.**
-Use a pgtk build; `select-enable-clipboard` is on and `meow-use-clipboard` is
-enabled. Wayland only lets a focused client own the clipboard.
-
-**How do I try it without touching my Guix home?**
-Clone this repository to a temporary directory and start Emacs with
-`emacs --init-directory /path/to/Kurosaki-emacs`.
-
-## 🤖 AI Declaration
+## AI Declaration
 
 This project is AI-assisted. Parts of the Emacs Lisp modules, language files,
 documentation and this README were generated or edited with the help of AI
@@ -263,15 +221,14 @@ AI-generated content can be incomplete or wrong; use it at your own risk.
 
 See [AI-DECLARATION.md](AI-DECLARATION.md) for the full statement.
 
-## 💖 Acknowledgements
+## Acknowledgements
 
-- [Centaur Emacs](https://github.com/seagle0128/.emacs.d) — the README layout and
+- Centaur Emacs (https://github.com/seagle0128/.emacs.d): the README layout and
   several UI ideas are inspired by it.
 - The Emacs, Guix, meow, vertico, corfu, consult, embark, eglot, magit and
   org-roam communities.
 - Maple Mono, LXGW WenKai and the Tokyo Night theme.
 
-## 📄 License
+## License
 
-GPL-3.0. See [LICENSE](LICENSE) or
-<https://www.gnu.org/licenses/gpl-3.0>.
+GPL-3.0. See [LICENSE](LICENSE) or https://www.gnu.org/licenses/gpl-3.0.
