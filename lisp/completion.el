@@ -392,3 +392,11 @@
 
 ;;; completion.el ends here
 (provide 'completion)
+
+;; clangd 的补全 label 里可能带 \342\200\242 这类字面量转义；
+;; corfu 显示前统一解码，和 eldoc 弹窗共用同一个函数。
+(with-eval-after-load 'corfu
+  (advice-add 'corfu--affixate :filter-args
+              (lambda (args)
+                (cons (mapcar #'unzeit/eldoc-decode-doc (car args))
+                      (cdr args)))))
