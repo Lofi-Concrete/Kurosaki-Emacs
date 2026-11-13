@@ -1,0 +1,1 @@
+/gnu/store/0hzqbbg0kl40d15gn5jyz44ikwnz1yii-ruby.el

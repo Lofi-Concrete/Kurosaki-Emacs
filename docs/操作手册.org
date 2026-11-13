@@ -1,0 +1,1255 @@
+#+TITLE: Unzeit 操作手册（完整版）
+#+STARTUP: showall
+#+OPTIONS: toc:3 num:nil
+#+FILETAGS: :emacs:manual:
+
+# 源文件：~/guix/home/editor/docs/操作手册.org
+# 使用副本：~/org/操作手册.org（=SPC o m= 打开这一个）
+# 简明版：~/org/快速上手.org
+# 同步：cp ~/guix/home/editor/docs/*.org ~/org/
+
+* 这份手册怎么读
+
+| 你现在的状态             | 读哪一节                             |
+|--------------------------+--------------------------------------|
+| 刚上手，只想赶紧能改代码 | 《快速上手》（=~/org/快速上手.org=） |
+| 想弄清 meow 的选区逻辑   | [[*meow 模态编辑]]                       |
+| 忘了一个 leader 键       | [[*SPC leader 全表]]                     |
+| 补全 / LSP 不工作        | [[*语言与 LSP]]、[[*排障]]                   |
+| 要改这套配置             | [[*配置与维护]]                          |
+
+三条找东西的通用手段：
+
+| 想知道               | 怎么查                                                     |
+|----------------------+------------------------------------------------------------|
+| 某个键绑了什么命令   | =C-h k= 然后按那个键                                       |
+| 某个命令绑在哪些键上 | =C-h w= 输入命令名（或 =SPC c ?= 不行时用 =M-x where-is=） |
+| 某个变量现在是什么值 | =C-h v= 输入变量名                                         |
+
+**记不住键位就不要背手册**：=SPC m ?= 会打开一张按“当前真实绑定”生成的速查表
+（=lisp/editor.el= 的 =unzeit/meow-cheatsheet=），它不会和配置脱节。
+
+* 心智模型
+
+** 三层结构
+
+| 层   | 是什么                                 | 例子                       |
+|------+----------------------------------------+----------------------------|
+| 缓冲 | buffer：一个文件 / 一个输出 / 一个界面 | =init.el=、=*compilation*= |
+| 窗口 | window：屏幕上显示某个缓冲的一块区域   | 左右分屏的两个窗           |
+| 帧   | frame：一个操作系统窗口（GUI 或 TTY）  | =emacs= 开的那一个         |
+
+- 同一个缓冲可以同时显示在多个窗口里；关窗口不杀缓冲，杀缓冲也不一定关窗口。
+- 标签栏（=tab-line=）按窗口记“这个窗口最近看过哪些文件”，=C-<tab>= 在标签间切。
+- 真实进程只有一个：GUI 实例自己就是 server（见下一节），所以 =C-x C-c= 是退出一切。
+
+** 两种“模式”，别混淆
+
+| 模式      | 含义                                                           |
+|-----------+----------------------------------------------------------------|
+| 主模式    | 每种语言的规则（=python-ts-mode=、=org-mode=…），一次只有一个 |
+| 次模式    | 附加功能（=flymake-mode=、=yas-minor-mode=…），可叠很多个     |
+| meow 状态 | 打字还是操作（=insert= / =normal= / =motion=），见下一节       |
+
+** 键位从哪来
+
+- 手写的 keymap：=unzeit/leader-map= 及其子表（=lisp/editor.el=）。
+- meow 的 normal / motion / insert 状态表（=lisp/editor.el= 的 =unzeit/meow-setup=）。
+- 各包自己的键（magit、org、corfu、vertico…），本手册只列常用的。
+- 全局兜底 =C-x= 前缀仍然完全可用：=C-x C-f=、=C-x C-s=、=C-x 4 b= 都没被改掉。
+
+* 启动、连接、退出
+
+** 启动
+
+| 命令                            | 结果                                                           |
+|---------------------------------+----------------------------------------------------------------|
+| =emacs=                         | 起 GUI 实例；它同时是 server（=server-start= 在 =core.el= 里） |
+| =emacs 文件=                    | 直接打开该文件（不显示主屏）                                   |
+| =emc=                           | 在当前终端开一个 TTY 帧；没有 server 时自动起 daemon           |
+| =emc 文件= / =emc +42 文件=     | 在终端打开文件 / 并跳到第 42 行                                |
+| =emacsclient -c=                | 再开一个 GUI 帧（接到已有实例上）                              |
+| =emacsclient -e '(kill-emacs)'= | 关掉整个 server（改完配置后重启用）                            |
+
+- =emc= 是 =~/.local/bin/emc=，内容就是 =emacsclient -t -a ""=。
+- 启动时没有文件参数 → 显示主屏（dashboard）；有文件 → 直接开文件。
+- 启动参数里 =+行号= 这种写法是 emacsclient 的语法，=emacs= 自己用的是 =+行:列 文件=。
+
+** 退出
+
+| 键        | 作用                                       |
+|-----------+--------------------------------------------|
+| =SPC q=   | 保存所有缓冲并退出（=C-x C-c= 同义）       |
+| =C-x 5 0= | 只关当前帧（GUI 实例做 server 时不算退出） |
+| =SPC b k= | 只关当前缓冲                               |
+| =q=       | meow：关当前窗口；没有别的窗口时关缓冲     |
+
+- 单实例 GUI 下 =SPC q= / =C-x C-c= 都是退出整个 Emacs（不再是只关 client）。
+- 退出前会问“是否保存修改过的缓冲”，=y= / =n= / =!= 照提示答。
+
+* meow 模态编辑
+
+** 三个状态
+
+| 状态   | 用途                   | 怎么进去 / 出来                   |
+|--------+------------------------+-----------------------------------|
+| normal | 移动、选区、删除、命令 | =ESC=（从 insert 回）；启动时默认 |
+| insert | 一切字符都是字面输入   | =i= =a= =I= =A=；=ESC= 回 normal  |
+| motion | 只用于阅读（j/k 翻动） | meow 在部分只读缓冲自动启用       |
+
+- 光标形状跟状态走：normal / motion 是方块，insert 是细竖线，带选区时临时变细竖线。
+- =SPC= 只在 normal / motion 态是 leader；insert 态它就是空格。
+- motion 态也能用 leader（配置里把 =SPC= 挂到了 motion 表上）。
+- meow 还有一个 keypad 态（把 Emacs 前缀当 leader 用），本配置没有入口键，
+  需要时 =M-x meow-keypad=；日常可以不管它。
+- 状态显示在模式行最左边（=NORMAL= / =INSERT= / =MOTION=）。
+
+** normal 态全表
+
+移动：
+
+| 键        | 作用                    | 备注                                 |
+|-----------+-------------------------+--------------------------------------|
+| =h= =l=   | 左 / 右一个字符         | 走到行首再按 =h= 会跨到上一行        |
+| =j= =k=   | 下 / 上一行             | 只按行，不改列                       |
+| =e= / =b= | 下一个词尾 / 上一个词首 | 词 = 字母数字下划线                  |
+| =E= / =B= | 下一个符号尾 / 符号首   | 符号 = 一整串非空白（=foo-bar.baz=） |
+
+选区（选中即替换、即删除）：
+
+| 键              | 作用                                        |
+|-----------------+---------------------------------------------|
+| =w= / =W=       | 选中光标处的词 / 符号；再按继续加一个       |
+| =x=             | 选中本行（不含换行）；再按往下多选一行      |
+| =H= =J= =K= =L= | 把选区往左 / 下 / 上 / 右扩                 |
+| =o=             | 选中光标所在的括号块；再按 =o= 往外扩一层   |
+| =O=             | 直接往外扩一层块                            |
+| =,= 字符        | 选中某类对象的“内部”（不含括号 / 引号）   |
+| =.= 字符        | 选中某类对象的“整体”（含括号 / 引号）     |
+| =[= / =]=       | 扩选到某类对象的开头 / 结尾                 |
+| =数字=          | 有选区时把选区再扩 N 个单位（=0= 是 10 个） |
+| =;=             | 光标与选区端点互换（往反方向扩选）          |
+| =g=             | 取消选区（没有选区时等于 =C-g=）            |
+| =z=             | 退回上一次扩选（选区栈）                    |
+
+编辑：
+
+| 键  | 作用                                                |
+|-----+-----------------------------------------------------|
+| =i= | 在选区开头插入                                      |
+| =a= | 在选区末尾追加                                      |
+| =I= | 在上方开新行并进入 insert                           |
+| =A= | 在下方开新行并进入 insert                           |
+| =d= | 删除选区 / 向前删一个字符（不进剪贴板）             |
+| =D= | 向后删一个字符                                      |
+| =s= | 剪切选区到剪贴板（kill ring）                       |
+| =y= | 复制选区                                            |
+| =p= | 粘贴（有选区则替换）                                |
+| =c= | 删除选区并进入 insert                               |
+| =r= | 用剪贴板内容替换选区                                |
+| =u= | 撤销                                                |
+| =U= | 只撤销选区内发生的改动                              |
+| =m= | 选中本行与上一非空行之间的缩进（再 =d= 即合并两行） |
+| ='= | 重复上一个命令                                      |
+
+搜索与跳转：
+
+| 键       | 作用                                                  |
+|----------+-------------------------------------------------------|
+| =v=      | 读一个词（用当前缓冲里的词/符号做补全），找到并选中它 |
+| =n=      | 用上一次搜索（正则）继续找；=-n= 反向找               |
+| =f= 字符 | 向后找到该字符并停住（数字前缀 = 第 n 个）            |
+| =t= 字符 | 同上，停在它前一位                                    |
+| =Q=      | 读行号，跳过去并选中该行                              |
+| =SPC=    | leader 前缀                                           |
+
+抓取（把一段东西“拿起来”再放）：
+
+| 键  | 作用                             |
+|-----+----------------------------------|
+| =G= | 抓取选区（没有选区就放一个标记） |
+| =R= | 把抓取的内容与当前选区交换       |
+| =Y= | 用当前选区同步抓取内容           |
+| =z= | 没选区时 =z= 弹出上一次抓取      |
+
+其它：
+
+| 键    | 作用                      |
+|-------+---------------------------|
+| =q=   | 关当前窗口 / 缓冲         |
+| =SPC= | leader                    |
+| =ESC= | normal 态无操作（防误触） |
+
+** insert 态
+
+- 除了下面这些，所有键都是字面输入（包括 =SPC=、=TAB= 走全局的缩进命令）。
+- =ESC= 回 normal；=C-g= 中断当前命令。
+- =C-M-i= 手动触发补全（corfu + capf，见[[*缓冲内补全]]）。
+- =C-x= 前缀照常可用：=C-x C-s= 保存、=C-x C-f= 打开文件。
+- =M-p= / =M-n= 上移 / 下移当前行（代码与文本缓冲）。
+
+** 数字：一个键，两种含义
+
+| 情况     | =3= 的意思是                                         |
+|----------+------------------------------------------------------|
+| 没有选区 | 次数前缀：=3j= 下移三行、=3x= 选三行、=-3j= 上移三行 |
+| 有选区   | 把选区按当前类型再扩 3 个单位（=0= 表示 10 个）      |
+
+- 原理：数字绑的是 =meow-expand-N=，没有选区时回退成 =digit-argument=（=meow-var.el=
+  的 =meow-selection-command-fallback=）。
+- =-= 是负前缀，给下一个命令反向：=-n= 反向搜索、=-3j= 上移三行。
+- ★ 旧版速查表把 =0..9= 写成“扩展选区到词 / 符号 / 行…”，那是错的（与实际实现不符）。
+  以本节为准；=SPC m ?= 里那几行说明待修。
+
+** 文本对象：=,= / =.= 后面跟一个字符
+
+| 字符 | 对象             | 例子（光标在括号里）                 |
+|------+------------------+--------------------------------------|
+| =r=  | 圆括号 =()=      | =,r= 选括号内，=.r= 连括号一起选     |
+| =s=  | 方括号 =[]=      |                                      |
+| =c=  | 花括号 ={}=      | 最常用：=,c= 选函数体                |
+| =g=  | 字符串引号内     | =,g= 选字符串内容，=.g= 含引号       |
+| =e=  | 一个符号         | 适合选变量名 / 函数名                |
+| =p=  | 段落             | 以空行分隔                           |
+| =l=  | 一行             |                                      |
+| =v=  | 视觉行（折行前） |                                      |
+| =d=  | 一个 defun       | 选整个函数                           |
+| =b=  | 整个缓冲         | =[b= 跳到缓冲开头 =]b= 跳到结尾      |
+| =w=  | 一个 window      | Emacs 的 window 对象，少用           |
+| =.=  | 一个句子         | 注意：这是对象名“句号”，不是分隔符 |
+
+- =[= 和 =]= 也用同样的字符：=]c= 扩选到花括号块的结尾，=[b= 到缓冲开头。
+
+* SPC leader 全表
+
+第一层（normal / motion 态按 =SPC=）：
+
+| 键      | 组             | 键      | 组                |
+|---------+----------------+---------+-------------------|
+| =SPC h= | 主屏           | =SPC f= | 文件              |
+| =SPC p= | 项目           | =SPC s= | 搜索              |
+| =SPC b= | 缓冲           | =SPC w= | 窗口              |
+| =SPC g= | Git            | =SPC l= | LSP / xref        |
+| =SPC c= | 配置 / 编译    | =SPC d= | 调试（dape）      |
+| =SPC a= | AI（DeepSeek） | =SPC j= | Java Web / Tomcat |
+| =SPC o= | Org / 写作     | =SPC r= | 寄存器            |
+| =SPC n= | 收窄 / 放宽    | =SPC z= | 字号缩放          |
+| =SPC m= | meow 帮助      | =SPC t= | eshell            |
+| =SPC T= | eat（终端）    | =SPC ;= | 注释 / 取消注释   |
+| =SPC ,= | 上一个缓冲     | =SPC `= | 跳到下一个窗口    |
+| =SPC W= | 跳到上一个窗口 | =SPC q= | 保存并退出        |
+
+按了前缀之后 =0.3 秒=，which-key 会把这些键的中文说明列在下面。
+
+** =SPC f= 文件
+
+| 键        | 命令                 | 说明                                                                |
+|-----------+----------------------+---------------------------------------------------------------------|
+| =SPC f f= | find-file            | 打开文件（=TAB= 补全，=RET= 确认）                                  |
+| =SPC f r= | consult-recent-file  | 最近打开过的文件（带预览）                                          |
+| =SPC f d= | dirvish-dwim         | 当前文件所在目录用 dirvish 打开                                     |
+| =SPC f D= | dirvish-toggle       | 全窗口 dirvish / 退回编辑                                           |
+| =SPC f t= | file-tree-toggle     | 左侧文件树开关（再按一次收起）                                      |
+| =SPC f T= | file-tree-focus      | 把光标移到左侧文件树                                                |
+| =SPC f a= | dirvish-quick-access | 书签：=h= 家目录 =g= ~/guix =e= Emacs 配置 =o= ~/org =p= ~/Projects |
+| =SPC f F= | dirvish-fd           | 用 fd 在全盘找文件名                                                |
+| =SPC f s= | save-buffer          | 保存当前文件（全文搜索用 =SPC s g= / =SPC f R=）                        |
+| =SPC f b= | consult-buffer       | 切缓冲                                                              |
+
+** =SPC p= 项目
+
+| 键        | 命令                             | 说明                                    |
+|-----------+----------------------------------+-----------------------------------------|
+| =SPC p p= | project-switch-project           | 选一个项目（=C-x p p= 同义）            |
+| =SPC p f= | project-find-file                | 项目内找文件（受项目忽略规则约束）      |
+| =SPC p F= | project-or-external-find-file    | 连项目外部的文件一起找                  |
+| =SPC p b= | consult-project-buffer           | 项目内的缓冲                            |
+| =SPC p d= | project-find-dir                 | 项目内选目录                            |
+| =SPC p D= | project-dired                    | 项目根的 dirvish                        |
+| =SPC p v= | project-vc-dir                   | 版本控制概览                            |
+| =SPC p g= | project-find-regexp              | 项目内正则搜索（=G= 含外部）            |
+| =SPC p s= | unzeit/project-ripgrep           | 从项目根 ripgrep 光标处的符号           |
+| =SPC p c= | project-compile                  | 项目编译（=C-x c=、=F9= 同义）          |
+| =SPC p t= | unzeit/run-tests                 | 猜项目类型跑测试（见[[*编译、运行、测试]]） |
+| =SPC p w= | project-save-some-buffers        | 保存项目内改动过的缓冲                  |
+| =SPC p k= | project-kill-buffers             | 关掉项目内所有缓冲                      |
+| =SPC p S= | project-shell                    | 项目根开 shell                          |
+| =SPC p E= | project-eshell                   | 项目根开 eshell                         |
+| =SPC p != | project-shell-command            | 项目根跑一条 shell 命令                 |
+| =SPC p &= | project-async-shell-command      | 同上，异步                              |
+| =SPC p x= | project-execute-extended-command | 在项目根 =M-x=                          |
+| =SPC p o= | project-any-command              | 同前缀下执行任意命令                    |
+| =SPC p r= | project-query-replace-regexp     | 项目内正则替换（逐个确认）              |
+
+- 没有 =.git= 的 Maven 目录（只有 =pom.xml=）也会被认成项目——=langs/servlet.el=
+  给 =project-find-functions= 加了一个认 pom 的后端。
+
+** =SPC s= 搜索
+
+| 键        | 命令            | 说明                   |
+|-----------+-----------------+------------------------|
+| =SPC s s= | consult-line    | 本文件内搜行，逐条预览 |
+| =SPC s g= | consult-ripgrep | 全文 ripgrep           |
+| =SPC s f= | consult-find    | 按文件名找             |
+| =SPC s b= | consult-buffer  | 切缓冲                 |
+
+** =SPC b= 缓冲
+
+| 键        | 说明                             |
+|-----------+----------------------------------|
+| =SPC b b= | 缓冲列表（=C-x b= 同义）         |
+| =SPC b k= | 关当前缓冲                       |
+| =SPC b n= | 下一个缓冲                       |
+| =SPC b p= | 上一个缓冲                       |
+| =SPC b ,= | 切回最近用过的另一个缓冲         |
+| =SPC b s= | 保存当前缓冲                     |
+| =SPC b i= | ibuffer（按模式/项目分组的列表） |
+
+** =SPC w= 窗口
+
+| 键           | 说明                                               |
+|--------------+----------------------------------------------------|
+| =SPC w h=    | 光标移到左窗（j/k/l 对应下/上/右）                 |
+| =SPC w w=    | 循环到下一个窗口（=SPC w W= 反方向，=SPC `= 同义） |
+| =SPC w s=    | 上下分屏                                           |
+| =SPC w v=    | 左右分屏                                           |
+| =SPC w 1..9= | 直接跳到第 N 个窗口（按视觉顺序编号）              |
+| =SPC w a=    | ace-window：每个窗口标字母，按字母跳               |
+| =SPC w A=    | ace-swap：把两个窗口的内容交换                     |
+| =SPC w m=    | 当前窗口最大化 / 还原（还原走 winner）             |
+| =SPC w ==    | 均分窗口                                           |
+| =SPC w u=    | 撤销上一次窗口布局变化                             |
+| =SPC w r=    | 重做布局变化                                       |
+| =SPC w d=    | 关掉这个窗口并杀掉它的缓冲                         |
+| =SPC w D=    | 只留当前窗口                                       |
+| =SPC w q=    | 只关这个窗口                                       |
+
+- 模式行最左边那个数字就是当前窗口号（只有一个窗口时不显示）。
+
+** =SPC g= Git
+
+| 键        | 说明                         |
+|-----------+------------------------------|
+| =SPC g s= | magit-status（=C-x g= 同义） |
+| =SPC g l= | 全部提交日志                 |
+| =SPC g d= | 看某处改动（diff）           |
+| =SPC g c= | 创建提交                     |
+| =SPC g p= | push                         |
+| =SPC g f= | fetch                        |
+| =SPC g b= | blame（逐行追责）            |
+
+magit 缓冲里的键见[[*Git]]。
+
+** =SPC l= LSP / xref
+
+| 键        | 说明                               |
+|-----------+------------------------------------|
+| =SPC l d= | 跳到定义                           |
+| =SPC l t= | 找所有引用                         |
+| =SPC l i= | 找实现                             |
+| =SPC l b= | 跳回来（=M-g ,= 同义）             |
+| =SPC l r= | 重命名符号（全项目）               |
+| =SPC l a= | 代码操作 / 快速修复                |
+| =SPC l f= | 格式化当前缓冲（=eglot-format=）   |
+| =SPC l h= | 在回显区显示光标处的文档（eldoc）  |
+| =SPC l s= | 当前文件的符号列表（=C-M-.= 同义） |
+
+- 这些只在 eglot 连上服务器后才有意义；没连上时 xref 会退化成“按标签/正则找”。
+
+** =SPC c= 配置 / 编译
+
+| 键        | 说明                                               |
+|-----------+----------------------------------------------------|
+| =SPC c c= | 打开配置源仓库的 =init.el=                         |
+| =SPC c l= | 用 dirvish 打开配置的 =lisp/= 目录                 |
+| =SPC c g= | =guix= 前缀（emacs-guix：包、世代、服务…）        |
+| =SPC c D= | 体检报告开关（=C-u= 先重编 elpa 字节码）           |
+| =SPC c t= | 换主题（=consult-theme=，带预览）                  |
+| =SPC c p= | 包列表（会按需刷新归档）                           |
+| =SPC c u= | 升级全部包                                         |
+| =SPC c C= | =compile=（读一条命令，=C-x c= / =F9= 走项目编译） |
+| =SPC c r= | 重新跑上一条编译命令                               |
+| =SPC c k= | 终止编译                                           |
+| =SPC c n= | 跳到下一个错误（=N= 上一个）                       |
+| =SPC c b= | 切到编译输出缓冲                                   |
+| =SPC c d= | 收起编译输出窗口                                   |
+
+** =SPC d= 调试
+
+| 键        | 说明                                    |
+|-----------+-----------------------------------------|
+| =SPC d d= | 启动调试（=F5= 同义）                   |
+| =SPC d b= | 切换断点（=B= 清空全部断点）            |
+| =SPC d c= | 继续                                    |
+| =SPC d n= | 单步跳过（next）                        |
+| =SPC d i= | 单步进入                                |
+| =SPC d o= | 单步跳出                                |
+| =SPC d p= | 暂停                                    |
+| =SPC d r= | 重启                                    |
+| =SPC d q= | 结束调试                                |
+| =SPC d e= | 求值表达式                              |
+| =SPC d l= | 打开 REPL                               |
+| =SPC d s= | 切到调试缓冲                            |
+| =SPC d S= | 选栈帧                                  |
+| =SPC d w= | 加监视表达式                            |
+| =SPC d h= | 打开 transient 菜单（同一功能的按钮版） |
+
+** =SPC a= AI
+
+| 键        | 说明                             |
+|-----------+----------------------------------|
+| =SPC a c= | 开一个 AI 对话缓冲（gptel）      |
+| =SPC a r= | 改写选区（带 diff 预览）         |
+| =SPC a e= | 解释选区（结果写进 =*AI*= 缓冲） |
+| =SPC a t= | 翻译选区（中英互译）             |
+| =SPC a A= | 在项目根开 aider（整仓库改代码） |
+| =SPC a k= | 重新读一遍 API key               |
+
+** =SPC j= Java Web / Tomcat
+
+=SPC j= 打开一个 transient 菜单（按键直接触发，=q= 退出菜单）：
+
+| 键  | 动作                    | 键  | 动作                          |
+|-----+-------------------------+-----+-------------------------------|
+| =n= | 新建 Maven Web 项目骨架 | =c= | =mvn compile=（改 Java 后跑） |
+| =t= | =mvn test=              | =d= | 依赖同步到 =WEB-INF/lib=      |
+| =p= | 打包 WAR                | =s= | 准备 Tomcat context（幂等）   |
+| =r= | 启动 Tomcat             | =k= | 停止 Tomcat                   |
+| =l= | 打开最新 catalina 日志  | =b= | 浏览器打开本项目首页          |
+
+细节见[[*Java Web / Maven / Tomcat]]。
+
+** =SPC o= Org / 写作
+
+| 键        | 说明                              |
+|-----------+-----------------------------------|
+| =SPC o a= | org-agenda                        |
+| =SPC o c= | org-capture（=t= 任务，=n= 笔记） |
+| =SPC o l= | 存一个链接                        |
+| =SPC o m= | 打开本手册                        |
+| =SPC o w= | 专注写作模式开关                  |
+
+** =SPC r= / =SPC n= / =SPC z= / =SPC m=
+
+| 键        | 说明                | 键        | 说明                 |
+|-----------+---------------------+-----------+----------------------|
+| =SPC r l= | 列出所有寄存器      | =SPC r s= | 把光标位置存进寄存器 |
+| =SPC r j= | 跳到寄存器里的位置  | =SPC r y= | 把选区存进寄存器     |
+| =SPC r i= | 插入寄存器内容      | =SPC n r= | 收窄到选区           |
+| =SPC n f= | 收窄到当前函数      | =SPC n p= | 收窄到当前页         |
+| =SPC n w= | 放宽（取消收窄）    | =SPC z += | 放大字号             |
+| =SPC z -= | 缩小字号            | =SPC z 0= | 字号复位             |
+| =SPC m ?= | meow 速查表（现算） | =SPC m t= | meow 交互教程        |
+
+** 不在 leader 里的高频全局键
+
+| 键                           | 说明                                                                 |
+|------------------------------+----------------------------------------------------------------------|
+| =C-s=                        | consult-line（本文件搜索；再按 =C-s= 复用上次词）                    |
+| =C-M-s=                      | consult-ripgrep                                                      |
+| =M-y=                        | 粘贴历史（consult-yank-pop）                                         |
+| =C-x b=                      | consult-buffer                                                       |
+| =C-x 4 b=                    | 在另一个窗口切缓冲                                                   |
+| =C-x <right>= / =C-x <left>= | 下一个 / 上一个缓冲                                                  |
+| =M-o=                        | ace-window：窗口标字母，按字母跳（至少两个窗口）                     |
+| =C-c W=                      | 行尾诊断是否也显示 warning/note                                      |
+| =C-c H=                      | 当前行高亮开关（Centaur 风格）                                       |
+| =C-x k=                      | 关缓冲（智能：分屏时连窗口一起收）                                   |
+| =C-x C-b=                    | ibuffer                                                              |
+| =C-x c= / =F9=               | 项目编译                                                             |
+| =C-x M-f=                    | .c ↔ .h / .cpp ↔ .hpp 互跳                                         |
+| =C-c C-f=                    | 在另一个窗口打开文件（org 缓冲里是“下一个同级标题”）               |
+| =C-c f=                      | flymake 诊断列表                                                     |
+| =C-c j=                      | avy-goto-line（按字母跳行）                                          |
+| =C-c i= 前缀                 | 缩进控制：=TAB= 用 Tab、=SPC= 用空格、=o= 宽度、=w= tab 宽度、=g= 猜 |
+| =C-c p= 前缀                 | 性能剖析：=b= 开始、=e= 停止、=r= 报告                               |
+| =C-'= / =C-M-'=              | 弹出/收起弹窗；切换弹窗类型（popper）                                |
+| =C-.= / =C-;=                | embark：对“当前对象”开操作菜单 / 直接执行默认操作                  |
+| =M-g g=                      | 跳行（consult-goto-line）                                            |
+| =M-g e=                      | 跳到编译错误（consult-compile-error）                                |
+| =M-g o=                      | 跳到某个标题 / 大纲项（consult-outline）                             |
+| =M-g i=                      | 本文件符号（consult-imenu）                                          |
+| =M-g I=                      | 多文件符号                                                           |
+| =M-g n= / =M-g p=            | 下一个 / 上一个错误或诊断                                            |
+| =M-g ,=                      | xref 返回                                                            |
+| =M-#= / =M-'= / =C-M-#=      | 载入 / 存入 / 列出寄存器                                             |
+| =TAB=                        | 缩进 / 补全（见[[*缓冲内补全]]）                                         |
+
+** C-c 自定义命令（与 SPC leader 并存）
+
+=C-c= 是 Emacs 保留给用户的前缀；meow 的 normal / motion 状态仍然可以按 =SPC=
+走 leader，=C-c= 则是一套不依赖状态的补充命令。
+
+| 键      | 命令                               | 说明                                                                            |
+|---------+------------------------------------+---------------------------------------------------------------------------------|
+| =C-c t= | unzeit/file-tree-toggle            | 左侧文件树开关（再按收起）                                                      |
+| =C-c T= | unzeit/file-tree-focus             | 把光标移到左侧文件树                                                            |
+| =C-c d= | unzeit/dirvish-toggle              | 全窗口 dirvish / 退回编辑                                                       |
+| =C-c h= | unzeit/dashboard-toggle            | 主屏开关                                                                        |
+| =C-c D= | unzeit/doctor-toggle               | 体检报告；=C-u C-c D= 先重编 elpa 字节码                                        |
+| =C-c w= | unzeit/writer-toggle               | 专注写作模式（org/text/markdown）                                               |
+| =C-c e= | unzeit/config-open                 | 打开配置源 =init.el=                                                            |
+| =C-c E= | unzeit/config-lisp-dir             | 用 Dired 打开配置的 =lisp/= 目录                                                |
+| =C-c m= | unzeit/org-manual                  | 打开本手册                                                                      |
+| =C-c M= | unzeit/quickstart-manual           | 打开《快速上手》                                                                |
+| =C-c a= | org-agenda                         | 日程                                                                            |
+| =C-c c= | org-capture                        | 捕获（=t= 任务 / =n= 笔记）                                                     |
+| =C-c s= | unzeit/eshell-toggle               | eshell 开关                                                                     |
+| =C-c S= | eat                                | eat 终端（TUI 程序也能跑）                                                      |
+| =C-c r= | unzeit/project-ripgrep             | 从项目根 ripgrep 光标处的符号                                                   |
+| =C-c R= | unzeit/run-tests                   | 猜项目类型跑测试                                                                |
+| =C-c x= | unzeit/compile-in-terminal         | 在 Eat 里跑编译（有进度/颜色）                                                  |
+| =C-c X= | unzeit/compile-toggle-view         | 编译日志 ⇄ 终端视图                                                             |
+| =C-c b= | unzeit/debug-menu                  | dape 调试菜单                                                                   |
+| =C-c W= | unzeit/diagnostics-toggle-warnings | 行尾诊断是否也显示 warning/note                                                 |
+| =C-c J= | unzeit/java-menu                   | Maven Web / Tomcat 菜单                                                         |
+| =C-c H= | unzeit/toggle-hl-line              | 全局当前行高亮开关（dashboard/term/help 自动排除）                              |
+| =C-c g= | guix                               | emacs-guix 包/世代/服务菜单                                                     |
+| =C-c A= | （前缀）                           | AI（DeepSeek）：=c= 对话、=r= 改写、=e= 解释、=t= 翻译、=A= aider、=k= 重读 key |
+
+- 按 =C-c= 停 0.3 秒，which-key 会列出这一层；自定义键排在前面，模式自己的
+  =C-c= 键排在后面，键多时 =C-h= 翻页。
+- 旧 leader 的 =SPC= 树没有删：=SPC b b= 仍是 consult-buffer，=SPC p p= 仍是项目，
+  =SPC w= 仍是窗口；=C-c= 只是多出来的一套无状态入口。
+
+* Minibuffer：vertico + orderless + marginalia + consult + embark
+
+所有“读输入”的交互都走这一套：=M-x=、打开文件、切缓冲、搜索、=C-x b=…
+候选默认显示在**屏幕中央的 childframe**（=vertico-posframe=）里；把
+=unzeit/vertico-posframe-center= 设 nil 会退回 Centaur 那种 near-bottom；
+没有 childframe 时（tty/daemon）自动回退普通底部 minibuffer。
+
+** 按键
+
+| 键            | 作用                                                           |
+|---------------+----------------------------------------------------------------|
+| =C-n= / =C-p= | 下一个 / 上一个候选（=M-n= / =M-p= 也行）                      |
+| =j= / =k=     | 同上（候选列表里 j/k 不插入字符）                              |
+| =RET=         | 确认；在文件路径里是“进入这个目录”                           |
+| =TAB=         | 补全当前输入（文件路径按目录补）                               |
+| =DEL=         | 退格；文件路径里删掉一个字符并退回上一层                       |
+| =M-DEL=       | 删掉路径里的一段                                               |
+| =C-g=         | 取消                                                           |
+| =C-s=         | 在已输入的历史里再搜（consult-line 里 =C-s= 是复用上次搜索词） |
+| =<=           | 窄化：=SPC b b= 里按 =<= 可以只留某一类（缓冲/文件/书签…）    |
+| =C-.=         | embark：对当前候选开操作菜单（复制、插入、导出…）             |
+
+** 匹配规则
+
+- =orderless=：空格分段、顺序随意、大小写不敏感。=li mo= 能命中 =lisp/modeline.el=。
+- 文件补全还叠加 =basic= 与 =partial-completion=：路径仍可按前缀补，=*/= 之类也认。
+- 右侧灰色注释由 =marginalia= 提供（文件大小、修改时间、主模式、git 状态）。
+- 预览由 =consult= 提供：移动候选停 0.2 秒就预览，=C-g= 取消整次会话。
+- 历史（含搜索词、=M-x= 命令、kill ring）由 =savehist= 持久化，重启还在。
+
+** consult 家族
+
+| 命令                            | 触发键                 | 用途                         |
+|---------------------------------+------------------------+------------------------------|
+| =consult-line=                  | =C-s= / =SPC s s=      | 本文件按行搜（正则）         |
+| =consult-ripgrep=               | =C-M-s= / =SPC s g=    | 全文搜（异步，边打边出结果） |
+| =consult-find=                  | =M-s d= / =SPC s f=    | 按文件名找（fd/find）        |
+| =consult-git-grep=              | =M-s G=                | 只在 git 跟踪的文件里搜      |
+| =consult-locate=                | =M-s D=                | 走 locate 数据库             |
+| =consult-imenu=                 | =M-g i=                | 本文件符号                   |
+| =consult-imenu-multi=           | =M-g I=                | 多文件符号                   |
+| =consult-outline=               | =M-g o=                | 按标题/大纲跳                |
+| =consult-compile-error=         | =M-g e=                | 从编译错误里选一条跳过去     |
+| =consult-mark= / =-global-mark= | =M-g m= / =M-g k=      | 标记 / 全局标记              |
+| =consult-keep-lines=            | =M-s k=                | 只留下匹配的行（过滤缓冲）   |
+| =consult-focus-lines=           | =M-s u=                | 隐藏匹配的行                 |
+| =consult-buffer=                | =C-x b= / =SPC b b=    | 缓冲 + 最近文件 + 书签 混合  |
+| =consult-yank-pop=              | =M-y=                  | 粘贴历史                     |
+| =consult-history=               | 在 minibuffer 里 =C-s= | 历史搜索                     |
+| =consult-register=              | =C-M-#=                | 寄存器一览                   |
+
+- =consult-ripgrep= 在项目里默认从项目根搜；不在项目里时问目录。输入的变化会
+  实时刷新（0.2 秒节流），不需要按回车。
+- =consult-line= 里再按 =C-s= 会填回上一次的搜索词；=M-n= / =M-p= 在结果间走。
+
+** embark
+
+| 键    | 作用                                                      |
+|-------+-----------------------------------------------------------|
+| =C-.= | 对“光标处的对象”开操作菜单：文件、URL、符号、候选、行… |
+| =C-;= | 直接执行该对象的默认操作                                  |
+| =C-h= | （embark 菜单里）= 查看这个操作菜单的按键表               |
+
+- “对象”由上下文决定：=C-x b= 候选上 =C-.= 能直接删除缓冲、在另一窗口打开；
+  =consult-line= 结果上 =C-.= 能复制整行、保存结果到缓冲。
+
+* 缓冲内补全
+
+三条独立的补全路径，按场景自动选：
+
+| 路径                 | 什么时候出现                                              |
+|----------------------+-----------------------------------------------------------|
+| =corfu=（弹窗）      | 输入 1 个字符、约 0.1 秒后自动弹                          |
+| =completion-preview= | 弹窗没弹、但有唯一候选时，在光标后显示灰字                |
+| =yasnippet=          | 候选里带 =snippet= 标记的模板（由 =yasnippet-capf= 提供） |
+
+** corfu 弹窗按键
+
+| 键              | 作用                    |
+|-----------------+-------------------------|
+| =TAB= / =S-TAB= | 下一个 / 上一个候选     |
+| =C-j= / =C-k=   | 下一个 / 上一个（同义） |
+| =RET=           | 确认插入                |
+| =ESC=           | 关掉弹窗（不插入）      |
+| =C-g=           | 同上                    |
+| =C-M-i=         | 手动触发（insert 态）   |
+
+- 候选左边有编号（=corfu-indexed-mode=），右边有类型图标，下方小字是文档。
+- 弹窗最大宽度 50 列、最多 8 条，永不超出窗口。
+- 在括号/引号后、或在分隔符之后会自己收起来（=corfu-quit-at-boundary=）。
+
+** completion-preview（灰字）
+
+- 只在 =prog-mode= 里开；corfu 弹窗可见时自动让位。
+- 出现灰字时按 =TAB= 接受；=ESC i= 只看不接受。其余情况 =TAB= 还是缩进。
+
+** TAB 的语义
+
+全局 =TAB= 绑的是 =unzeit/tab-dwim=（=lisp/completion.el=）。
+
+| 情况             | TAB 干什么             |
+|------------------+------------------------|
+| 有选区           | 缩进整个选区           |
+| 光标处有补全候选 | 补全                   |
+| 什么都没发生     | 插入一个制表符         |
+| =C-u TAB=        | 强制刚性缩进（不兜底） |
+
+- 网页模板族（=html-mode= / =mhtml-ts-mode= / =web-mode= / =jsp-mode=）里
+  TAB 不展开 snippet —— 否则打 =<form= 一按 TAB 就被塞成多域模板。
+  snippet 仍可从补全候选里选，或 =M-x yas-insert-snippet=。
+- 在 snippet 的活动域里，TAB 是“跳到下一个域”；网页缓冲里则优先补全。
+
+** 补全来源（capf 栈）
+
+| 来源               | 提供什么                                                    |
+|--------------------+-------------------------------------------------------------|
+| eglot（LSP）       | 语言服务器给的成员、函数签名、导入…                        |
+| =cape-dabbrev=     | 同语言其它缓冲里的词（按语言类过滤，.c 不会混进 .cpp 的词） |
+| =cape-file=        | 文件名                                                      |
+| =cape-keyword=     | elisp 关键字（只在 emacs-lisp 缓冲）                        |
+| =cape-elisp-block= | org 里的 elisp 代码块                                       |
+| =yasnippet-capf=   | 代码片段模板                                                |
+
+* 文件、目录、项目、标签
+
+** 打开文件
+
+- =SPC f f= / =C-x C-f=：路径支持 orderless 模糊匹配；=RET= 进目录；目录不存在时
+  会**自动创建**（=find-file= 外面挂了一层 advice）。
+- =SPC f r=：最近文件（=recentf= 存 50 条，持久化在 =~/.cache/emacs/recentf=）。
+- =SPC f d=：当前文件的目录用 dirvish 打开。
+- =SPC f a=：书签式快跳（=h= 家 =g= ~/guix =e= 配置 =o= ~/org =p= ~/Projects）。
+- =SPC f F=：用 =fd= 按文件名全盘找。
+
+** dirvish（替代 dired）
+
+- =SPC f t= 左侧文件树开关；=SPC f T= 把光标移进去；=SPC f D= 全窗口。
+- 侧栏宽按当前目录最长文件名自适应（20–32 列），自动跟随当前文件所在目录（=dirvish-side-follow-mode=）。
+- 键位就是 dired 的键，另加子树折叠：
+
+| 键              | 作用                             |
+|-----------------+----------------------------------|
+| =RET=           | 打开文件 / 进入目录              |
+| =^=             | 回上级目录                       |
+| =g=             | 刷新                             |
+| =m= / =u=       | 标记 / 取消标记                  |
+| =d= / =x=       | 标删 / 执行标记的操作            |
+| =R= / =C= / =D= | 重命名 / 复制 / 删除             |
+| =+=             | 新建目录                         |
+| =(=             | 折叠 / 展开文件详情              |
+| =C-x C-q=       | wdired：直接把缓冲当文本改文件名 |
+| =q=             | 退出                             |
+
+- 删除走回收站（=delete-by-moving-to-trash=）；复制/移动时另一窗口的目录是默认目标。
+- 视频/图片/PDF 这类文件按 =RET= 会用 =xdg-open= 交给系统应用。
+- 隐藏 =.DS_Store=、=.cache=、=.vscode=、=node_modules= 之类噪声。
+
+** 项目（project.el）
+
+- 项目根 = 最近的 git 仓库，或最近的 =pom.xml=（Maven 无 git 也能认）。
+- 项目内找文件会跳过 =node_modules=、=target=、=.venv=、=*.elc= 等。
+- =SPC p p= 选项目时会列出常用命令：查找文件 / 查找目录 / 切换缓冲 / Dired / VC 目录。
+- 第一次访问某项目会问是否加入项目列表，答 =y= 即可（=~/.cache/emacs/projects=）。
+
+** 标签栏（tab-line）
+
+- 每个窗口顶上一条标签栏，只显示文件缓冲，图标 + 文件名。
+- =C-<tab>= 下一个标签，=C-S-<tab>= 上一个（VSC 习惯）。
+- 标签属于窗口：分屏后两个窗口各有自己的标签集合。
+- 关标签 = 杀缓冲（=C-x k= 或 =SPC b k=）。
+
+* 搜索与替换
+
+| 想干什么          | 按什么                                     |
+|-------------------+--------------------------------------------|
+| 本文件找行        | =C-s= 或 =SPC s s=（consult-line，带预览） |
+| 全项目找文本      | =C-M-s= / =SPC s g=（ripgrep，异步）       |
+| 只搜 git 里的文件 | =M-s G=                                    |
+| 按文件名找        | =M-s d= / =SPC s f=                        |
+| 找光标处的符号    | =SPC p s=（从项目根）                      |
+| 找某个标题        | =M-g o=                                    |
+| 只保留匹配行      | =M-s k=（consult-keep-lines）              |
+| 隐藏匹配行        | =M-s u=（consult-focus-lines）             |
+| 原生增量搜索      | =C-r=（向后）/ =M-x isearch-forward=       |
+| 正则替换          | =M-x replace-regexp=                       |
+| 项目内正则替换    | =SPC p r=（project-query-replace-regexp）  |
+| 收窄到选区 / 函数 | =SPC n r= / =SPC n f=；=SPC n w= 放宽      |
+
+- 普通“替换”不需要命令：选中 → 直接打字（meow 的选区就是替换目标）。
+- =consult-line= 的结果是一张可操作的列表：=C-.= 可对结果开菜单（复制、跳到、导出）。
+- 在 =consult-ripgrep= 里输入是“边打边搜”，不用回车；=C-g= 取消，不会改文件。
+
+* 窗口与弹窗
+
+| 想干什么                | 按什么                           |
+|-------------------------+----------------------------------|
+| 分屏                    | =SPC w s= / =SPC w v=            |
+| 在窗口间走              | =SPC w h/j/k/l= 或 =SPC `=       |
+| 直接跳第 N 个窗口       | =SPC w 1..9=（模式行左边有编号） |
+| 最大化 / 还原           | =SPC w m=                        |
+| 撤销 / 重做布局         | =SPC w u= / =SPC w r=            |
+| 只留当前窗口            | =SPC w D=                        |
+| 关窗口 / 关窗口并杀缓冲 | =q= / =SPC w d=                  |
+| ace 跳转 / 交换         | =SPC w a= / =SPC w A=            |
+
+- 弹窗（帮助、编译输出、backtrace、警告）归 =popper= 管：=C-'= 在当前弹窗与
+  上一个弹窗之间切；=C-M-'= 换弹窗类型。弹窗按目录分组，不会串项目。
+- xref/LSP 的跳转优先复用已有窗口，不会越跳越碎。
+
+* 编译、运行、测试
+
+** 编译
+
+| 键 / 命令             | 说明                                  |
+|-----------------------+---------------------------------------|
+| =SPC c C=             | =compile=：读一条命令（默认给项目的） |
+| =SPC c r=             | 重跑上一条                            |
+| =C-x c= / =F9=        | =project-compile=：项目根的编译命令   |
+| =SPC p c=             | 同上                                  |
+| =SPC c k=             | 终止编译                              |
+| =SPC c n= / =N=       | 下一个 / 上一个错误                   |
+| =M-g e=               | 从错误列表里挑一条跳过去              |
+| =SPC c b= / =SPC c d= | 切到 / 收起编译输出窗口               |
+
+- 编译输出带颜色：=compile= 跑在 pty 上，工具输出的 ANSI 转义会被翻译成 face，
+  不会满屏 =^[…m= 乱码。
+- 编译缓冲支持 =g= 重跑、=q= 收起；错误行可以 =RET= 直接跳。
+
+** 测试 / 运行
+
+| 方式                      | 说明                                                                            |
+|---------------------------+---------------------------------------------------------------------------------|
+| =SPC p t=                 | 猜项目类型跑测试：Cargo / npm / pytest / go / zig / Maven / Make                |
+| =SPC p !=                 | 项目根跑一条 shell 命令                                                         |
+| =SPC p &=                 | 同上，异步（不占 Emacs）                                                        |
+| =M-x async-shell-command= | 在任意目录跑异步命令                                                            |
+| C 文件用了 raylib         | 打开时自动把 =compile-command= 设成 =cc … pkg-config --libs raylib && ./a.out= |
+
+- =SPC p t= 找不到标志文件时会问你一次命令，之后这一条会记住。
+- 所有输出进 =*compilation*=，所以 =SPC c n= 仍然能跳到失败行。
+
+** 终端
+
+| 键          | 打开什么                                  |
+|-------------+-------------------------------------------|
+| =SPC t=     | eshell（Emacs 自带 shell，输出可编辑）    |
+| =SPC T=     | eat（真终端，TUI 程序、vim、htop 都能跑） |
+| =SPC p S=   | 项目根的 shell                            |
+| =SPC p E=   | 项目根的 eshell                           |
+| =M-x shell= | 普通 shell 缓冲                           |
+
+- eshell 里 =C-r= 是历史搜索（=consult-history=）。
+- 在终端缓冲里要回 normal 态：=ESC=；要退出 eat 缓冲：=C-x k= 或 =SPC b k=。
+
+* 语言与 LSP
+
+** 自动连接
+
+- 打开 =prog-mode= 派生的文件时自动 =eglot-ensure=；=yaml-ts-mode=、=html-mode= 也连。
+- =web-mode=（NJK/ERB 模板）故意不连 HTML 服务器（会报一堆假诊断）；
+  JSP 走独立的 =jsp-mode=，它连。
+- 连上后模式行出现 =LSP=（亮色 = 已连，灰色 = 连接中）；诊断在行尾显示色块。
+
+** 各语言一览
+
+| 语言              | 主模式                                       | LSP 服务器                              | 保存时格式化     |
+|-------------------+----------------------------------------------+-----------------------------------------+------------------|
+| C / C++           | =c-ts-mode= / =c++-ts-mode=                  | clangd                                  | clang-format     |
+| Java              | =java-ts-mode=                               | jdtls（+ eglot-java）                   | —               |
+| JavaScript        | =js-ts-mode=                                 | typescript-language-server              | prettier         |
+| TypeScript        | =typescript-ts-mode=                         | 同上                                    | prettier         |
+| TSX               | =tsx-ts-mode=                                | 同上                                    | prettier         |
+| JSON              | =json-ts-mode=                               | —                                      | prettier         |
+| HTML / JSP        | =mhtml-ts-mode= / =jsp-mode=                 | vscode-html-language-server             | prettier         |
+| CSS               | =css-ts-mode=                                | —（HTML 里的内嵌样式由 html 服务器管） | prettier         |
+| Python            | =python-ts-mode=                             | pylsp                                   | black            |
+| Rust              | =rust-ts-mode=                               | rust-analyzer                           | rustfmt          |
+| Go                | =go-ts-mode=                                 | gopls（带 inlay hints）                 | gofmt            |
+| Zig               | =zig-mode=                                   | zls                                     | zig fmt          |
+| Ruby              | =ruby-ts-mode=                               | —                                      | —               |
+| Haskell           | =haskell-mode=                               | haskell-language-server                 | —               |
+| C3 / Odin         | =c3-ts-mode= / =odin-ts-mode=                | — / ols                                | odinfmt          |
+| TOML / YAML       | =toml-ts-mode= / =yaml-ts-mode=              | —                                      | taplo / prettier |
+| Lua / CMake / KDL | =lua-ts-mode= / =cmake-ts-mode= / =kdl-mode= | —                                      | —               |
+| Elisp             | =emacs-lisp-mode=                            | elisp 字节编译检查                      | —               |
+
+- 表里“—”表示没有接，不是坏了；要接就改对应 =~/.emacs.d/langs/=.el= 里的
+  =unzeit/eglot-server= / =unzeit/apheleia-mode=。
+
+** 诊断与格式化
+
+| 想干什么            | 按什么                                            |
+|---------------------+---------------------------------------------------|
+| 看行尾诊断色块      | 自动显示（红=错误，钢蓝=警告，灰蓝=提示）         |
+| 跳到下一个 / 上一个 | =M-g n= / =M-g p=（=SPC c n= 在有编译错误时也跳） |
+| 诊断列表            | =C-c f=                                           |
+| 看光标处文档        | =SPC l h=（eldoc，回显区）                        |
+| 手动格式化          | =SPC l f=                                         |
+| 保存时自动格式化    | 默认开（=apheleia-mode=），保存即格式化           |
+| 看类型 / 参数名     | inlay hints 自动显示（=eglot-inlay-hints-mode=）  |
+
+- 保存时格式化只针对表里登记的“格式化器”；缺可执行文件会报一句、不影响保存。
+- 格式化失败只报一句错、不写盘：缓冲留在“已修改”状态，改好再存一次即可。
+
+** tree-sitter 与缺失语法
+
+- 上色/缩进靠 tree-sitter 语法库；缺语法时回显区提示“缺少 X 的语法”。
+- 装语法：=M-x treesit-install-language-grammar=，语言名从下拉里选（源已登记）。
+- 超过 1 MiB 的 C/C++ 文件会自动把高亮降到 1 档，避免滚动掉帧。
+- 语法与模式自带的查询文件版本不匹配时，症状是“高亮了但不准”，重装同一门语法即可。
+
+** 首次连接很慢是正常的
+
+- zls / rust-analyzer / jdtls 第一次要建索引，可能 30 秒到几分钟；界面不卡
+  （连接是异步的），别以为死了就杀。
+- C/C++ 的 clangd 需要 =compile_commands.json= 才能准确跳转；没有也能跳，
+  但可能有误报。用 CMake 时加 =-DCMAKE_EXPORT_COMPILE_COMMANDS=ON=。
+
+* 调试（dape）
+
+| 键        | 作用                               |
+|-----------+------------------------------------|
+| =F5=      | 启动调试（=SPC d d= 同义）         |
+| =SPC d b= | 切换断点（边栏显示 ●）            |
+| =SPC d c= | 继续                               |
+| =SPC d n= | 单步跳过                           |
+| =SPC d i= | 单步进入                           |
+| =SPC d o= | 单步跳出                           |
+| =SPC d e= | 对光标处表达式求值                 |
+| =SPC d l= | REPL                               |
+| =SPC d w= | 监视表达式                         |
+| =SPC d S= | 切栈帧                             |
+| =SPC d r= | 重启                               |
+| =SPC d q= | 结束                               |
+| =SPC d h= | 同样功能的按钮版（transient 菜单） |
+
+- 启动前会自动保存所有缓冲；调试面板在**右侧**，左边留给文件树。
+- 变量值以 inlay hints 形式直接显示在代码行里。
+- Java：=C-c C-d= 直接在光标所在类上启动调试（用 jdtls 的 java-debug 适配器）；
+  =C-c C-r= 跑 main、=C-c C-t= 跑测试。
+- Python 依赖 =debugpy=、C/C++ 依赖 =gdb=（都已装好）。
+- 结束调试后右侧面板会自动收掉。
+
+* Git
+
+** 日常流程
+
+| 键 / 命令             | 说明                     |
+|-----------------------+--------------------------|
+| =C-x g= / =SPC g s=   | magit-status（当前项目） |
+| =SPC g l=             | 全部提交日志             |
+| =SPC g d=             | 看某处改动               |
+| =SPC g c=             | 直接进提交信息缓冲       |
+| =SPC g p= / =SPC g f= | push / fetch             |
+| =SPC g b=             | blame                    |
+
+** magit 缓冲里的键
+
+| 键        | 作用                                            |
+|-----------+-------------------------------------------------|
+| =TAB=     | 展开 / 收起当前段落                             |
+| =s= / =u= | 暂存 / 取消暂存当前改动                         |
+| =S=       | 暂存全部                                        |
+| =c c=     | 提交（写信息后 =C-c C-c= 完成；=C-c C-k= 放弃） |
+| =P= / =F= | push / pull                                     |
+| =f=       | fetch                                           |
+| =l l=     | 当前分支日志                                    |
+| =d=       | diff                                            |
+| =x=       | 丢弃改动（会二次确认）                          |
+| =g=       | 刷新                                            |
+| =q=       | 退出                                            |
+| =?=       | 完整按键表                                      |
+
+- 提交信息缓冲里 =C-c C-c= 确认、=C-c C-k= 取消。
+- diff 用 =delta= 渲染（语法高亮 + 行号），在 magit 里自动生效。
+- 边栏的彩色条是 =diff-hl=：绿=新增、蓝=改动、红=删除；保存时自动刷新。
+
+** 冲突
+
+- 打开带 =<<<<<<<= 标记的文件会自动进入 =smerge-mode=。
+- =C-c ^ m= 保留我这边的、=C-c ^ o= 保留对方、=C-c ^ n= / =C-c ^ p= 在冲突块间跳。
+- 合并/变基卡住时 =M-x magit-status= 会提示当前操作（rebase/merge），按键量都写在提示里。
+
+* Java Web / Maven / Tomcat
+
+** 一条命令起一个新项目
+
+=SPC j n= 会问 groupId / artifactId / Java 包名 / 目录 / WAR 名，然后生成：
+
+| 文件                                   | 内容                                                    |
+|----------------------------------------+---------------------------------------------------------|
+| =pom.xml=                              | war 打包，Servlet 4.0 / JSTL，=maven.compiler.release=8 |
+| =src/main/webapp/WEB-INF/web.xml=      | 欢迎页 =index.jsp=                                      |
+| =src/main/webapp/index.jsp=            | 带时间戳的首页（用来验证热编译）                        |
+| =src/main/java/<包>/HelloServlet.java= | =@WebServlet("/hello")= 示例                            |
+| =.gitignore=                           | 忽略 =target/= 与 =WEB-INF/lib/=                        |
+
+** 开发循环
+
+| 步 | 动作                                                           |
+|----+----------------------------------------------------------------|
+|  1 | =SPC j s= 准备 context（幂等，第一次必做）                     |
+|  2 | =SPC j r= 启动 Tomcat（日志进 =*tomcat*= 缓冲）                |
+|  3 | =SPC j b= 打开首页 =http://localhost:8080/<WAR名>/=            |
+|  4 | 改 =.java= → =SPC j c=（mvn compile）→ 约 0.35 秒自动 reload |
+|  5 | 改 =.jsp= → 存盘即可，刷新浏览器                              |
+|  6 | =SPC j t= 跑测试、=SPC j p= 打包 WAR、=SPC j l= 看日志         |
+|  7 | =SPC j k= 停止 Tomcat                                          |
+
+** 机制（知道这些能省很多时间）
+
+- 每个项目一份隔离的 =CATALINA_BASE=，放在 =~/.cache/tomcat-base/<项目目录名>=，
+  项目树里只有源码，不会被 Tomcat 的运行时文件污染。
+- context 描述符是“零拷贝 + 可 reload”：=docBase= 指向 =src/main/webapp=，
+  =target/classes= 用 =PreResources= 挂成 =/WEB-INF/classes=，所以改完 Java
+  只需要 =mvn compile=，Tomcat 会自动重新加载上下文。
+- 依赖 jar 用 =SPC j d=（=mvn dependency:copy-dependencies=）拷进
+  =src/main/webapp/WEB-INF/lib/=；这个目录已在 =.gitignore= 里。
+- 默认端口 8080 / shutdown 8005；要改改 =langs/servlet.el= 顶部的两个变量。
+- 可选：=M-x unzeit/servlet-compile-on-save-mode= 让每次保存 =.java= 自动编译
+  （代价是每次存盘跑一次 mvn，默认关）。
+
+** Java 本身
+
+- 主模式 =java-ts-mode=，LSP 是手装的 =jdtls=（=~/.local/opt/jdtls=），
+  由 =eglot-java= 接管 Maven 项目的识别、运行、测试。
+- =C-c C-r= 跑当前类的 main、=C-c C-t= 跑测试、=C-c C-d= 启动调试。
+- 跨 jar 跳到第三方源码也能用：=jdt://= 链接会被落到项目根的 =.eglot-java/= 下再打开。
+
+* Org
+
+** 目录与文件
+
+| 文件                 | 用途                                   |
+|----------------------+----------------------------------------|
+| =~/org/inbox.org=    | 默认记录文件；capture 的“任务”进这里 |
+| =~/org/projects.org= | 项目相关的条目                         |
+| =~/org/操作手册.org= | 本手册                                 |
+| =~/org/快速上手.org= | 简明版                                 |
+
+- agenda 只扫 =inbox.org= 与 =projects.org= 两个文件（在 =lisp/init-org.el= 里改）。
+
+** 标题与待办
+
+| 键                    | 作用                                |
+|-----------------------+-------------------------------------|
+| =TAB= / =S-TAB=       | 折叠 / 展开当前标题                 |
+| =M-RET=               | 新建同级标题                        |
+| =M-S-RET=             | 新建 TODO 标题                      |
+| =M-LEFT= / =M-RIGHT=  | 升级 / 降级标题                     |
+| =M-UP= / =M-DOWN=     | 整棵子树上移 / 下移                 |
+| =C-c C-t=             | 切换 TODO 状态（TODO→DOING→DONE） |
+| =S-LEFT= / =S-RIGHT=  | 状态往前 / 往后循环                 |
+| =C-c C-s= / =C-c C-d= | 计划日期 / 截止日期                 |
+| =C-c C-q=             | 编辑标签                            |
+| =C-c C-w=             | refile 到别的标题下                 |
+| =C-c C-n= / =C-c C-p= | 下一个 / 上一个标题                 |
+| =C-c C-u=             | 回到上一层标题                      |
+
+- 状态关键字是 =TODO(t)= / =DOING(i)= / =DONE(d)=；完成时记时间戳（=org-log-done=）。
+- 计时：=C-c C-x C-i= 开始、=C-c C-x C-o= 结束、=C-c C-x C-q= 取消、
+  =C-c C-x C-x= 继续上一次计时；时长记进 =LOGBOOK=。
+
+** capture / agenda
+
+| 键        | 作用                                                                |
+|-----------+---------------------------------------------------------------------|
+| =SPC o c= | org-capture；=t= 任务（进 =inbox.org=）、=n= 笔记（进 =notes.org=） |
+| =SPC o a= | org-agenda                                                          |
+| =SPC o l= | 存一个链接（配合 =C-c C-l= 插入）                                   |
+
+- agenda 缓冲里：=n= / =p= 上下、=TAB= 展开、=RET= 跳到条目、=t= 改状态、=q= 退出。
+
+** 代码块与导出
+
+| 键           | 作用                                               |
+|--------------+----------------------------------------------------|
+| =C-c '=      | 在独立缓冲里编辑当前代码块                         |
+| =C-c C-c=    | 执行代码块（支持 emacs-lisp / shell / python / C） |
+| =C-c C-e=    | 导出（HTML / PDF / Markdown，已启用 md 后端）      |
+| =<s= + =TAB= | 插入 =#+begin_src= 模板（org-tempo）               |
+
+- 表格：在表格里按 =TAB= 自动对齐、=RET= 换行到下一格；=C-c -= 加横线。
+- 强调标记默认隐藏（=org-appear=），光标移上去才显形。
+
+** 视觉
+
+- =org-modern=：星号变方块、TODO 变彩色标签块、表格画竖线、进度条。
+- org 缓冲整体用 =LXGW WenKai Mono=（手写稿纸感），其它缓冲的中文是 =Maple Mono NF CN=。
+- =SPC o w=：专注写作模式——正文按 88 列居中、行距加大、行号收起、光标变竖线、
+  标题按层级放大，模式行出现 =✎=；再按一次完全恢复。只对 org/text/markdown 有效。
+
+* AI（DeepSeek）
+
+** 配置
+
+- 后端：DeepSeek 官方 API（OpenAI 兼容），模型 =deepseek-chat= 与 =deepseek-reasoner=。
+- API key 从 =~/.authinfo.gpg= 读，加一行：
+
+  #+begin_src conf
+  machine api.deepseek.com login apikey password sk-...
+  #+end_src
+
+- 只在按键时才发请求：没有行内补全、没有后台调用。key 改了用 =SPC a k= 重读。
+
+** 用法
+
+| 键        | 作用                                                                |
+|-----------+---------------------------------------------------------------------|
+| =SPC a c= | 开对话（gptel）。对话缓冲里 =C-c RET= 发送                          |
+| =SPC a r= | 改写选区：给出 diff 预览，逐段接受 / 拒绝                           |
+| =SPC a e= | 解释选区（代码或文字），结果写进 =*AI*= 缓冲                        |
+| =SPC a t= | 翻译选区（中文→英文，其它→中文）                                  |
+| =SPC a A= | 在项目根开 aider（整仓库改代码，需先 =uv tool install aider-chat=） |
+
+- =SPC a e= / =SPC a t= 需要先有选区（=w= / =x= / =v= 选一段）。
+- 对话回复按 =org-mode= 渲染（标题、列表、代码块都能正常显示）。
+- 模型名、host 这类本机覆盖写在 =~/.emacs.d/ai-settings.el=（不随仓库部署）。
+
+* 外观
+
+** 主题与配色
+
+- 主题固定 =doom-tokyo-night=，不跟壁纸联动；=SPC c t= 可以临时换着看。
+- 语法高亮是 Tokyo Night 的分配：关键字 / 函数 / 字符串 / 注释各有一档。
+- 诊断色块（行尾）：错误红、警告金、提示绿，都是低饱和暗底 + 同色 1px 边框。
+- 颜色字面量（=#ff8800= 这类）用 colorful-mode 铺底色预览；非 colorful 缓冲由
+  =unzeit/rainbow-region= 补上，两套不会叠。
+- 主题和语法色都写死在配置里，没有“从壁纸取色”的间接层了（那条链已退役）。
+
+** 字体（两档）
+
+| 用途         | 字体             | 字号                                                                         |
+|--------------+------------------+------------------------------------------------------------------------------|
+| 正文         | Maple Mono NF CN | =unzeit/body-font-height= = 130（13pt，与 Ghostty 的 =font-size = 13= 对齐） |
+| 界面         | Maple Mono NF CN | =unzeit/ui-font-height= = 120（12pt）                                        |
+| 中文         | Maple Mono NF CN | 跟随所在档                                                                   |
+| org 缓冲中文 | LXGW WenKai Mono | 跟随所在档                                                                   |
+| Nerd 图标    | Maple Mono NF CN | 跟随所在档                                                                   |
+| emoji        | Noto Color Emoji | —                                                                           |
+
+- “界面”= 模式行、minibuffer、vertico、dashboard、which-key、诊断提示。
+- 改字号要动两处：=core.el= 的两个 defconst + =early-init.el= 里的
+  =default-frame-alist= 字体串（="Maple Mono NF CN-13"），两处要一致。
+- 临时缩放：=SPC z += / =SPC z -= / =SPC z 0=；只影响当前缓冲，不持久。
+- 中文/图标走 fontset，Emacs 不读 fontconfig 的 fallback，换字体必须改
+  =core.el= 的 =unzeit/setup-fonts=。
+
+** 界面元素
+
+| 元素       | 现状                                                                                 |
+|------------+--------------------------------------------------------------------------------------|
+| 行号       | 只在代码/配置（prog/conf/yaml/toml）默认开启；绝对行号，宽度从 1 自适应；text/org/dired/主屏关闭 |
+| 空白符     | 行尾空格、Tab（显示成 →）、文件末尾缺换行                                           |
+| 连字       | =->= ===> =!= =&&= 等在代码缓冲里合成符号                                            |
+| 缩进参考线 | 每层一条 0.08 字符宽的细实线（颜色 =#8a94c8=）                                       |
+| 当前行高亮 | 全局开启（Centaur 风格），=C-c H= 开关；dashboard / term / help 自动关闭              |
+| 光标       | 方块、0.5 秒闪一次、一直闪；非选中窗口不画光标                                       |
+| 分屏分隔   | 四边 1px 细分隔线（=unzeit/modern-dividers= 可关）                                   |
+| 同符号高亮 | 光标下的符号，所有出现处一起高亮（空闲 0.3 秒后）                                    |
+| 数字高亮   | 常量、端口、尺寸自动染色                                                             |
+| TODO 标记  | =TODO= / =FIXME= 红色，=HACK= / =REVIEW= 黄色                                        |
+
+** 现代化层（2026-11，Centaur 风格）
+
+- **滚动**：=ultra-scroll= 像素平滑，=scroll-conservatively 3= / =scroll-margin 0=；
+  终端或关掉 =unzeit/modern-scroll= 时回退行滚动。
+- **弹层**：which-key / transient / vertico 都用 childframe，默认**居中**；
+  which-key 限 3 列、30 字描述、列间距 1，四周留白，不贴边。
+  vertico 候选在屏幕中央显示（=unzeit/vertico-posframe-center= 设为 nil
+  退回 near-bottom）；没有 childframe 时回退普通底部 minibuffer / which-key 侧窗。
+- **非文件缓冲**：=solaire-mode= 变暗（dired/help/magit 一眼区分）。
+- **诊断**：=flymake-no-changes-timeout= 0.15s；=flyover= 内联覆盖层，行尾 chip 仍在；
+  不想要内联就把 =unzeit/modern-inline-diagnostics= 设 nil。
+- **补全**：corfu 2 字符 / 0.15s / 10 条；consult 只在 line/grep 类命令自动预览；
+  CJK 候选支持拼音首字母（=wj= 命中“文件”）。
+- **编辑**：=C-a/C-e= 行首/代码首两段（mwim）；=C-;= iedit；=C-== expand-region；
+  =C-x u= vundo；=C-,= 跳到上次修改；底层的 undo-fu-session 仍持久化撤销历史。
+- **语法**：Emacs 31 的 =treesit-enabled-modes= 统一启用内置 ts-mode（rust/markdown
+  除外），语法仍由 Guix profile 预装，不弹自动安装；缺语法只在回显区提示。
+- **开关**：全部在 =lisp/unzeit-modern.el=；在 =init-local.el= 里改默认值即可逐项回退。
+
+** 主屏（dashboard）
+
+- =SPC h= 开关；不带文件启动 =emacsc= 或 =emc= 时也显示。
+- 内容是：Emacs 娘 logo + 一条随机 galgame 日语台词 + 最近编辑 3 个 + 项目 2 个。
+- 主屏里 =RET= 打开光标处条目，=j= / =k= 移动，=g= 刷新，=q= 关闭（回上一个缓冲）。
+
+* 配置与维护
+
+** 这套配置在哪
+
+| 路径                            | 是什么                                     |
+|---------------------------------+--------------------------------------------|
+| =~/guix/home/editor/editor.scm= | Guix 的模块定义（部署哪些目录）            |
+| =~/guix/home/editor/.emacs.d/=  | 配置源文件（=init.el=、=lisp/=、=langs/=） |
+| =~/guix/home/editor/bin/emc=    | =emc= 包装脚本                             |
+| =~/guix/home/editor/docs/=      | 本手册与《快速上手》的源文件               |
+| =~/.emacs.d/=                   | **部署产物**：store 里的只读软链，别改     |
+| =~/.local/bin/emc=              | 同上                                       |
+
+** 改配置的标准流程
+
+1. 改仓库里的文件（=SPC c c= 打开源 =init.el=，=SPC c l= 打开 =lisp/= 目录）。
+2. 部署：=guix home reconfigure ~/guix/home/home.scm=（或跑 =~/guix/home/reconfigure.sh=）。
+3. 重启 Emacs：=emacsclient -e '(kill-emacs)'= 然后重新 =emacs=。
+   （GUI 实例本身就是 server，=kill-emacs= 会把它关掉。）
+
+- =~/.emacs.d/= 下是只读的 store 链接，改了不会生效，reconfigure 也会覆盖。
+- 本机私有改动写在 =~/.emacs.d/init-local.el=（不部署、不会被覆盖）。
+- Customize 写进 =~/.emacs.d/custom-state.el=，也是机器本地的。
+
+** 包管理
+
+- 包装在 =~/.emacs.d/elpa/=，启动用 =package-quickstart= 加速。
+- 归档镜像：自动在 4 个国内镜像里测速挑最快的（tuna / ustc / bfsu / nju），
+  全挂则回退官方源（走 mihomo 代理）。测速结果缓存 7 天，**启动时零网络请求**。
+- =SPC c p= 包列表、=SPC c u= 升级全部——这两个入口才会按需刷新归档。
+- 缺的包会在**第一次需要时**自动安装（例如首次打开 =.c3= 文件时装 c3-ts-mode）。
+- ★ 升级 Emacs 之后必须重编所有包：=C-u SPC c D=（=package-recompile-all=）。
+  旧字节码 + 新 Emacs 的症状千奇百怪（典型：vertico 候选变成一行报错文字）。
+
+** 体检（=SPC c D=）
+
+一次看全七件事：启动耗时、每个命令的固定开销（=post-command-hook=，>1ms 的会标记）、
+缺失的 tree-sitter 语法、找不到的 LSP 可执行文件、缺字体、字节码版本不符、
+重复安装的包、最近的警告。=C-u SPC c D= 会先重编 elpa 字节码再出报告。
+
+** 加一门语言 / 加一个键
+
+- 新语言：在 =~/.emacs.d/langs/= 下加一个 =<语言>.el=（仓库里是
+  =~/guix/home/lang/<工具>/langs/=），用这几行登记即可：
+  =unzeit/treesit-source=、=unzeit/remap-mode=、=unzeit/eglot-server=、
+  =unzeit/apheleia-mode=、=unzeit/define-on-demand-mode=。
+  规矩写在 =~/guix/AGENTS.md= 的 R3 一节。
+- 新按键：在 =lisp/editor.el= 里用 =defvar-keymap= 定义，再挂进 =unzeit/leader-map=。
+  详细说明见该文件里 =unzeit/leader-descriptions= 附近的注释。
+
+** 缓存与状态
+
+| 路径                          | 内容                                   |
+|-------------------------------+----------------------------------------|
+| =~/.cache/emacs/backups/=     | 备份文件（=~= 文件）                   |
+| =~/.cache/emacs/autosaves/=   | 自动保存（=#文件#=）                   |
+| =~/.cache/emacs/recentf=      | 最近文件列表                           |
+| =~/.cache/emacs/history=      | minibuffer / kill ring 历史            |
+| =~/.cache/emacs/places=       | 每个文件的光标位置                     |
+| =~/.cache/emacs/projects=     | 已知项目列表                           |
+| =~/.emacs.d/undo-fu-session/= | 持久化撤销历史（关掉文件再开还能撤销） |
+
+* 排障
+
+| 症状                             | 原因 / 处理                                                                                            |
+|----------------------------------+--------------------------------------------------------------------------------------------------------|
+| 改了配置没生效                   | store 是只读快照：要 reconfigure 再重启 Emacs                                                          |
+| =SPC c c= 打开的文件是只读的     | 部署还没更新（=unzeit/config-directory= 回落到了 =~/.emacs.d=）                                        |
+| 打字 / 移动光标卡顿              | 先看电源档：离电 + 省电 EPP 时 CPU 只在 1.5GHz 附近。插电或用性能档对比；再看 =SPC c D= 里 >1ms 的钩子 |
+| 补全不弹                         | =C-M-i= 手动触发；仍不弹就 =SPC c D= 看 capf/服务器                                                    |
+| LSP 没连（模式行 =LSP= 是灰的）  | 服务器不在 =exec-path= 上，或首次索引还没完（zls/rust-analyzer 可等数十秒）                            |
+| 代码有高亮但跳转不准             | C/C++ 缺 =compile_commands.json=；用 CMake 时加 =-DCMAKE_EXPORT_COMPILE_COMMANDS=ON=                   |
+| 列表 / 命令突然变成一行报错文字  | elpa 字节码与 Emacs 版本不匹配：=C-u SPC c D=                                                          |
+| 打开文件提示 “Break the lock?” | 上次 Emacs 被杀留下的 =.#文件名=，删掉该文件即可                                                       |
+| 中文变豆腐块 / 图标是方框        | 字体没装（Maple Mono NF CN / LXGW WenKai Mono）；换字体后要重启                                                   |
+| =C-x C-c= 把整个 Emacs 退了      | 单实例设计（GUI 实例即 server）；只关帧用 =C-x 5 0=                                                    |
+| 表格越往右越错位                 | 别把 org 表格写得比窗口还宽；=C-c C-c= 重排一次                                                        |
+| 网页里 TAB 不展开 snippet        | 故意的（见[[*TAB 的语义]]）                                                                                |
+| 弹窗抢焦点 / 关不掉              | =C-'= 收起；=C-g= 取消                                                                                 |
+
+** 已经退役、别再找的东西
+
+| 旧东西                             | 现在是什么                                          |
+|------------------------------------+-----------------------------------------------------|
+| awesome-tab 标签栏（=SPC T= 前缀） | =tab-line=，=C-<tab>= 切换，=SPC T= 现在是 eat 终端 |
+| 光标拖尾 / 跳跃动画（=SPC c a=）   | 已删；=SPC c a= 这个键不存在了                      |
+| 从壁纸取色的主题链                 | 主题固定 Ayu Dark，配色写死                         |
+| =js2-mode= / =js2-refactor=        | 改用 =js-ts-mode=，重构走 LSP 的 code action        |
+| X11 时代的 dwm / st / rofi 配置    | 已归档到 =~/attic/=，与 Emacs 无关                  |
+
+* 一页速查（可打印）
+
+** 操作（normal 态）
+
+| 移动      | 选区                     | 编辑            | 其它                    |
+|-----------+--------------------------+-----------------+-------------------------|
+| =h j k l= | =w= / =W=                | =i= / =a=       | =SPC= leader            |
+| =e= / =b= | =x=                      | =I= / =A=       | =C-g= 取消              |
+| =E= / =B= | =H J K L=                | =d= / =D=       | =u= 撤销 / =C-M-_= 重做 |
+| =f= 字符  | =o= / =O=                | =s= / =y=       | ='= 重复上个命令        |
+| =t= 字符  | =,= 字符 / =.= 字符      | =p= / =c= / =r= | =q= 关窗口              |
+| =Q= 行号  | =数字= / =;= / =g= / =z= | =m=             | =SPC m ?= 速查表        |
+
+** 最常用的 leader（一屏装得下）
+
+| 键        | 作用        | 键        | 作用         |
+|-----------+-------------+-----------+--------------|
+| =SPC f f= | 打开文件    | =SPC f r= | 最近文件     |
+| =SPC f t= | 文件树      | =SPC f a= | 目录书签     |
+| =SPC s g= | 全文搜索    | =SPC s s= | 本文件搜索   |
+| =SPC b b= | 切缓冲      | =SPC ,=   | 上一个缓冲   |
+| =SPC p p= | 切项目      | =SPC p f= | 项目内找文件 |
+| =SPC p s= | 搜项目符号  | =SPC p t= | 跑测试       |
+| =SPC w s= | 上下分屏    | =SPC w v= | 左右分屏     |
+| =SPC w m= | 最大化/还原 | =SPC w u= | 撤销布局     |
+| =SPC l d= | 跳定义      | =SPC l t= | 找引用       |
+| =SPC l b= | 跳回来      | =SPC l r= | 重命名       |
+| =SPC c C= | 编译        | =SPC c n= | 下一个错误   |
+| =SPC g s= | Git 状态    | =SPC d d= | 启动调试     |
+| =SPC o m= | 本手册      | =SPC c D= | 体检         |
+
+** 补全与搜索
+
+| 键              | 作用                         |
+|-----------------+------------------------------|
+| =C-M-i=         | 手动补全                     |
+| =TAB= / =S-TAB= | 候选下 / 上（=C-j= / =C-k=） |
+| =RET=           | 确认                         |
+| =C-s=           | 本文件搜行                   |
+| =C-M-s=         | 全文搜                       |
+| =M-g g=         | 跳行                         |
+| =M-g n=         | 下一个错误/诊断              |
+| =C-c j=         | avy 跳行                     |
+| =C-c f=         | 诊断列表                     |
+| =C-.=           | embark 操作菜单              |
+
+* 变更记录
+
+- *2026-11-02* 本手册按当前配置整体重写。旧版（2026-09-18）里以下内容已作废：
+  awesome-tab 标签栏与 =SPC T= 工作区前缀、红色单色主题与 =unzeit-theme.el=、
+  光标动画（=SPC c a=）、=js2-refactor=、=corfu-popupinfo= 已禁用的说法、
+  “界面 18pt 正文 35.3pt” 的旧字号。
+- *2026-11-02* 同时做了三处小改：=unzeit/config-directory= 指向真实的源仓库
+  （=~/guix/home/editor/.emacs.d=，此前误写成已不存在的 =home/.emacs.d=），
+  新增 =SPC o q= 直接打开《快速上手》、which-key 里 org 组补上“快速上手”字样。
+  这几项要 =guix home reconfigure= 一次才生效。
+- *2026-11-10* meow 回归：normal / insert / motion 状态、=SPC= leader、速查表、
+  模式行状态块全部恢复；=C-c= 自定义表继续保留。字体改回 Iosevka Term +
+  Sarasa Term SC，正文 13pt / 界面 12pt，与 Ghostty 的 =font-size = 13= 对齐；
+  tab-line 图标恢复 nerd-icons 的彩色 face；dirvish 侧栏按文件名自适应 20–32 列。
+- *2026-11-12* 正文字体从 Iosevka Term + Sarasa Term SC 换成 **Maple Mono NF CN**
+  （org 仍 LXGW WenKai Mono），正文 13pt / 界面 12pt 不变。
+

@@ -1,0 +1,1 @@
+/gnu/store/k0ky6k57zz3qn7nywwsda332x878mpxf-go.el

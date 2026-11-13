@@ -1,0 +1,1 @@
+/gnu/store/klhpr146p2kdqnif24i8nh2zamp5v671-rust.el

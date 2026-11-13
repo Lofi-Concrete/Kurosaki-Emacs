@@ -1,0 +1,1 @@
+/gnu/store/vlygz2b92pp3kk8y9g708vhs8r4nj7p0-config-formats.el
