@@ -195,10 +195,6 @@ which-key 弹层：
 
 ![Which-key](images/which-key.png)
 
-vertico 补全：
-
-![Vertico](images/vertico.png)
-
 主屏截图见本 README 顶部。
 
 ## AI 声明

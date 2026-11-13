@@ -205,10 +205,6 @@ Which-key popup:
 
 ![Which-key](images/which-key.png)
 
-Vertico completion:
-
-![Vertico](images/vertico.png)
-
 The dashboard screenshot at the top of this README shows the same setup.
 
 ## AI Declaration
