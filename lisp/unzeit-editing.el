@@ -102,3 +102,7 @@
 
 (provide 'unzeit-editing)
 ;;; unzeit-editing.el ends here
+
+(with-eval-after-load 'corfu
+  (unless (memq #'nerd-icons-corfu-formatter corfu-margin-formatters)
+    (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter)))

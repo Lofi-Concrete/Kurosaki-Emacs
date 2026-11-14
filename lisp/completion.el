@@ -410,3 +410,7 @@
 
 (with-eval-after-load 'corfu
   (advice-add 'corfu--replace :filter-args #'unzeit/corfu-clean-replace))
+
+(with-eval-after-load 'corfu
+  (unless (memq #'nerd-icons-corfu-formatter corfu-margin-formatters)
+    (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter)))
