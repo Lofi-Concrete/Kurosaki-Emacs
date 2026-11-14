@@ -90,7 +90,7 @@
   :ensure t
   :after corfu
   :config
-  (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
+)
 
 ;; 只装不启用：和 meow 的选择/编辑模型冲突，留给需要时手动开。
 (use-package multiple-cursors

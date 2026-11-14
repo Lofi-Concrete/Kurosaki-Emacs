@@ -201,7 +201,7 @@
   :defer t
   :after corfu
   :init
-  (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
+)
 
 (use-package cape
   :ensure t
@@ -400,3 +400,13 @@
               (lambda (args)
                 (cons (mapcar #'unzeit/eldoc-decode-doc (car args))
                       (cdr args)))))
+
+;; 补全插入前去掉 kind 图标（? / •）并解码残留八进制转义。
+(defun unzeit/corfu-clean-replace (args)
+  (let* ((str (caddr args))
+         (clean (replace-regexp-in-string
+                 "\\`[•?]" "" (unzeit/eldoc-decode-doc str))))
+    (list (car args) (cadr args) clean)))
+
+(with-eval-after-load 'corfu
+  (advice-add 'corfu--replace :filter-args #'unzeit/corfu-clean-replace))
